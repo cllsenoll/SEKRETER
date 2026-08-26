@@ -196,15 +196,14 @@ if uploaded_file is not None:
         # Sütun adlarındaki olası boşlukları temizle
         df.columns = df.columns.astype(str).str.strip()
         
-        # Eğer Excel dosyasında KOPS Kasa verisi varsa onu da yakala
+        # Eğer Excel dosyasında KOPS Kasa verisi varsa yakala
         for col in df.columns:
             if "kops" in col.lower():
-                # Sütun içerisindeki ilk geçerli sayısal değeri alabiliriz
                 val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
                 if not val_candidates.empty:
                     excel_kops_degeri = float(val_candidates.iloc[0])
 
-        st.sidebar.success("Excel dosyası başarıyla yüklendi!")
+        st.sidebar.success("HESAP Excel dosyası başarıyla yüklendi!")
     except Exception as e:
         st.sidebar.error(f"Dosya okuma hatası: {e}")
         df = None
@@ -339,7 +338,6 @@ with st.container():
     else:
         st.session_state["genel_net_kasa"] = float(toplam_sayilan_kasa)
 
-    # Eğer Excel'den KOPS değeri okunduysa başlangıç değeri olarak onu ata
     if excel_kops_degeri is not None and "genel_kops_kasa" not in st.session_state:
         st.session_state["genel_kops_kasa"] = excel_kops_degeri
 
@@ -477,7 +475,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
         spaceAfter=15
     )
     
-    elements.append(Paragraph("Günlük Personel Hesap and Kasa Takip Raporu", title_style))
+    elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
     elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
     elements.append(Spacer(1, 10))
     
