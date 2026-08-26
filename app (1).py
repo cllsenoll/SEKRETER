@@ -231,15 +231,20 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # --- GÜNCELLENMİŞ HATASIZ SAYI TEMİZLEME FONKSİYONU ---
+    # --- GÜNCELLENMİŞ VE TAM GÜVENLİ SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         def parse_val(val):
-            if pd.isna(val):
-                return 0.0
-            val_str = str(val).strip()
-            if val_str == '' or val_str.lower() == 'nan' or val_str == 'None':
-                return 0.0
             try:
+                if val is None:
+                    return 0.0
+                # Seri / Liste veya çoklu değer durumunu engellemek için kontrol
+                if isinstance(val, (list, tuple, pd.Series, dict)):
+                    return 0.0
+                
+                val_str = str(val).strip()
+                if val_str == '' or val_str.lower() == 'nan' or val_str.lower() == 'none':
+                    return 0.0
+                
                 val_str = val_str.replace('TL', '').replace('₺', '').replace(' ', '')
                 if ',' in val_str and '.' in val_str:
                     if val_str.rfind(',') > val_str.rfind('.'):
