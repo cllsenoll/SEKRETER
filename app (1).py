@@ -37,19 +37,34 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
         margin-bottom: 8px;
     }
+    .card-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 6px;
+    }
+    .profile-img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ff7b00;
+    }
+    .person-info {
+        text-align: left;
+    }
     .person-name {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
         font-weight: bold;
         color: #ffffff;
-        margin-top: 6px;
-        margin-bottom: 4px;
-        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+        letter-spacing: 0.3px;
     }
     .person-net-tutar {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         font-weight: bold;
         color: #00ff88;
-        margin-top: 4px;
     }
 
     /* Expander ve Kutuların Görünümü */
@@ -168,21 +183,30 @@ for i in range(0, len(df), cols_per_row):
             odenen_key = f"odenen_{idx}"
             
             with cols[j]:
-                # Ön hesaplamalar (Kart üzerinde HESAP Net ve İşlem Tamam durumunu gösterebilmek için)
-                # Geçici olarak session_state değerlerini okuyoruz
+                # Ön hesaplamalar
                 temp_banka = st.session_state.get(banka_key, 0.0)
                 hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                 
-                # Ödenen alanı girilmiş mi kontrolü (Varsayılan olarak hesap_tutar atanıyor ancak kullanıcı değiştirdiyse)
+                # "Ödenen" alanı doldurulmuş mu kontrolü
                 has_paid = odenen_key in st.session_state
-                status_text = "✔ İşlem Tamam" if has_paid else "⏳ İşlem Bekliyor"
-                status_color = "#00ff88" if has_paid else "#ffb703"
+                
+                if has_paid:
+                    status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
+                else:
+                    status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
+
+                avatar_url = "https://img.icons8.com/color/96/user-male-circle--v1.png"
 
                 st.markdown(f"""
                 <div class="person-card">
-                    <div style="color: {status_color}; font-size: 0.8rem; font-weight: bold; margin-bottom: 2px;">{status_text}</div>
-                    <div class="person-name">{person_name}</div>
-                    <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
+                    {status_html}
+                    <div class="card-content">
+                        <img src="{avatar_url}" class="profile-img">
+                        <div class="person-info">
+                            <div class="person-name">{person_name}</div>
+                            <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
