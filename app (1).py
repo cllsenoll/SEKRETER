@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 import io
 import urllib.parse
+import os
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -101,7 +104,7 @@ st.markdown("""
     }
     
     /* Input ve Widget Etiketlerini Beyaz Yapma */
-    .stNumberInput label, .stMetric label {
+    .stNumberInput label, .stMetric label, .stTextInput label {
         color: #ffffff !important;
     }
 
@@ -143,8 +146,11 @@ with st.sidebar:
     st.info("CELAL ŞENOL (Şube Şefi)")
     
     st.markdown("---")
-    st.markdown("📂 **Rapor / Liste Yükle**")
+    st.markdown("⚙️ **GitHub Ayarları**")
+    github_user = st.text_input("GitHub Kullanıcı Adınız", value="KULLANICI_ADINIZ", help="GitHub deponuzun bulunduğu kullanıcı adını buraya yazın.")
     
+    st.markdown("---")
+    st.markdown("📂 **Rapor / Liste Yükle**")
     uploaded_file = st.file_uploader("HESAP Excel Dosyasını Yükle", type=["xlsx", "xls", "csv"])
     
     st.markdown("---")
@@ -192,13 +198,10 @@ if missing_cols:
     st.stop()
 
 # GitHub deponuzdaki gerçek dosya isimlendirmelerine uygun URL oluşturan fonksiyon
-def get_profile_image_url(person_name):
-    # GitHub'daki dosyalarınız büyük harf ve orijinal boşluklu/karakterli (Örn: BURCU DÜREN.png)
+def get_profile_image_url(person_name, g_user):
     clean_name = person_name.strip()
     encoded_name = urllib.parse.quote(f"{clean_name}.png")
-    
-    # ⚠️ 'KULLANICI_ADINIZ' kısmını kendi GitHub kullanıcı adınızla değiştirmelisiniz!
-    return f"https://raw.githubusercontent.com/KULLANICI_ADINIZ/SEKRETER/main/{encoded_name}"
+    return f"https://raw.githubusercontent.com/{g_user}/SEKRETER/main/{encoded_name}"
 
 # Görsel yüklenemediğinde çalışacak varsayılan yedek avatar
 DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
@@ -229,7 +232,7 @@ for i in range(0, len(df), cols_per_row):
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                avatar_url = get_profile_image_url(person_name)
+                avatar_url = get_profile_image_url(person_name, github_user)
 
                 st.markdown(f"""
                 <div class="person-card">
@@ -280,6 +283,23 @@ for i in range(0, len(df), cols_per_row):
                     else:
                         st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
+                    # --- YENİ ÖZELLİK: KASA & PARA SAYMA ALANI ---
+                    st.markdown("---")
+                    st.markdown("💵 **Kasa / Para Sayma (Banknot Adetleri)**")
+                    
+                    b200 = st.number_input("200 TL Adet", min_value=0, value=0, step=1, key=f"b200_{idx}")
+                    b100 = st.number_input("100 TL Adet", min_value=0, value=0, step=1, key=f"b100_{idx}")
+                    b50 = st.number_input("50 TL Adet", min_value=0, value=0, step=1, key=f"b50_{idx}")
+                    b20 = st.number_input("20 TL Adet", min_value=0, value=0, step=1, key=f"b20_{idx}")
+                    b10 = st.number_input("10 TL Adet", min_value=0, value=0, step=1, key=f"b10_{idx}")
+                    b5 = st.number_input("5 TL Adet", min_value=0, value=0, step=1, key=f"b5_{idx}")
+                    
+                    toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
+                    st.info(f"📊 Hesaplanan Kasa Toplamı: **{toplam_sayilan_kasa:,.2f} TL**")
+                    
+                    # İsteğe bağlı manüel ek kasa girişi veya bu sayılanı aktarma butonu
+                    manuel_kasa = st.number_input("Manüel Kasa Değeri", min_value=0.0, value=float(toplam_sayilan_kasa), step=10.0, key=f"manuel_kasa_{idx}")
+
 # Alt Özet Tablosu ve PDF İndirme Butonu
 st.markdown("---")
 st.markdown("### 📊 Genel Hesap Özeti Tablosu")
@@ -295,6 +315,8 @@ for idx, row in df.iterrows():
     odenen_val = st.session_state.get(f"odenen_{idx}", hesap)
     fark_val = odenen_val - hesap
     
+    manuel_kasa_val = st.session_state.get(f"manuel_kasa_{idx}", 0.0)
+    
     if fark_val > 0:
         durum_metni = f"Fazla: +{fark_val:,.2f} TL"
     elif fark_val < 0:
@@ -309,25 +331,38 @@ for idx, row in df.iterrows():
         "Banka / ATM": f"{banka_val:,.2f} TL",
         "HESAP": f"{hesap:,.2f} TL",
         "Ödenen": f"{odenen_val:,.2f} TL",
+        "Kasa (Sayım)": f"{manuel_kasa_val:,.2f} TL",
         "Eksik/Fazla": durum_metni
     })
 
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
 
-# PDF Raporu Oluşturma Fonksiyonu
+# PDF Raporu Oluşturma Fonksiyonu (Türkçe Karakter Destekli)
 def generate_pdf(data_frame):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=25, leftMargin=25, topMargin=30, bottomMargin=30)
     elements = []
+    
+    # Türkçe Karakterler İçin Font Kaydı
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+        font_name = 'DejaVuSans'
+        font_bold = 'DejaVuSans-Bold'
+    else:
+        font_name = 'Helvetica'
+        font_bold = 'Helvetica-Bold'
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'TitleStyle',
         parent=styles['Heading1'],
-        fontSize=16,
+        fontName=font_bold,
+        fontSize=15,
         textColor=colors.HexColor('#1e3a8a'),
-        alignment=1,
+        alignment=1, # Center
         spaceAfter=15
     )
     
@@ -336,17 +371,19 @@ def generate_pdf(data_frame):
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
     
-    t = Table(table_data, colWidths=[105, 75, 75, 65, 65, 65, 65])
+    t = Table(table_data, colWidths=[90, 65, 65, 55, 55, 55, 65, 75])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), font_bold),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('FONTNAME', (0, 1), (-1, -1), font_name),
+        ('FONTSIZE', (0, 1), (-1, -1), 7.5),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
     ]))
     
