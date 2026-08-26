@@ -200,7 +200,7 @@ if uploaded_file is not None:
                 # Nakit Fatura Tutarı sütunu
                 elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
                     rename_map[col] = "Nakit Ft. Tutarı Top"
-                # Nakit Ödeme Tutarı sütunu ("nakit ödeme tutarı topl" ve türevleri)
+                # Nakit Ödeme Tutarı sütunu
                 elif "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
                     rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
@@ -235,33 +235,28 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
+    # --- KESİN ÇÖZÜM: GÜNCELLENMİŞ AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
-        if series.dtype == object or series.dtype == str:
-            cleaned = series.astype(str).str.strip()
-            cleaned = cleaned.str.replace('TL', '', case=False, regex=False)
-            cleaned = cleaned.str.replace('₺', '', regex=False)
-            cleaned = cleaned.str.replace(' ', '', regex=False)
-            
-            def parse_val(val):
-                if val == '' or str(val).lower() == 'nan' or str(val).lower() == 'none':
-                    return 0.0
-                try:
-                    val_str = str(val)
-                    if ',' in val_str and '.' in val_str:
-                        if val_str.rfind(',') > val_str.rfind('.'):
-                            val_str = val_str.replace('.', '').replace(',', '.')
-                        else:
-                            val_str = val_str.replace(',', '')
-                    elif ',' in val_str:
-                        val_str = val_str.replace(',', '.')
-                    return float(val_str)
-                except:
-                    return 0.0
-            
-            return cleaned.apply(parse_val)
-        else:
-            return pd.to_numeric(series, errors='coerce').fillna(0.0)
+        def parse_val(val):
+            if val is None or pd.isna(val):
+                return 0.0
+            val_str = str(val).strip()
+            if val_str == '' or val_str.lower() == 'nan' or val_str.lower() == 'none':
+                return 0.0
+            try:
+                val_str = val_str.replace('TL', '').replace('₺', '').replace(' ', '')
+                if ',' in val_str and '.' in val_str:
+                    if val_str.rfind(',') > val_str.rfind('.'):
+                        val_str = val_str.replace('.', '').replace(',', '.')
+                    else:
+                        val_str = val_str.replace(',', '')
+                elif ',' in val_str:
+                    val_str = val_str.replace(',', '.')
+                return float(val_str)
+            except:
+                return 0.0
+        
+        return series.apply(parse_val)
 
     # Sayısal sütunları güvenli bir şekilde dönüştür
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
