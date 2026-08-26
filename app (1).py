@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import urllib.parse
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
@@ -48,7 +49,7 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* Personel Kartları Tasarımı (Orijinal Koyu Mavi Hali) */
+    /* Personel Kartları Tasarımı */
     .person-card {
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
@@ -180,7 +181,7 @@ if uploaded_file is not None:
         df = load_sample_data()
 else:
     df = load_sample_data()
-    st.info("💡 Bilgi: Kendi 'HESAP' Excel dosyanızı yüklemediğiniz sürece örnek veriler gösterilmektedir. Excel dosyanızda **'Personel'**, **'Nakit Ft. Tutarı Top'** ve **'Nakit Ödeme Tutarı Topl.'** sütunları yer almalıdır.")
+    st.info("💡 Bilgi: Kendi 'HESAP' Excel dosyanızı yüklemediğiniz sürece örnek veriler gösterilmektedir.")
 
 # Gerekli sütun kontrolü
 required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
@@ -190,28 +191,14 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub SEKRETER deposundan PNG uzantılı profil resmi URL'si oluşturan fonksiyon
+# GitHub deponuzdaki gerçek dosya isimlendirmelerine uygun URL oluşturan fonksiyon
 def get_profile_image_url(person_name):
-    formatted_name = (
-        person_name.strip()
-        .lower()
-        .replace("İ", "i")
-        .replace("I", "ı")
-        .replace("Ğ", "g")
-        .replace("Ü", "u")
-        .replace("Ş", "s")
-        .replace("Ö", "o")
-        .replace("Ç", "c")
-        .replace("ş", "s")
-        .replace("ğ", "g")
-        .replace("ü", "u")
-        .replace("ö", "o")
-        .replace("ç", "c")
-        .replace("ı", "i")
-        .replace(" ", "_")
-    )
-    # ⚠️ ÖNEMLİ: Aşağıdaki 'KULLANICI_ADINIZ' kısmını kendi gerçek GitHub kullanıcı adınızla değiştirmelisiniz!
-    return f"https://raw.githubusercontent.com/KULLANICI_ADINIZ/SEKRETER/main/{formatted_name}.png"
+    # GitHub'daki dosyalarınız büyük harf ve orijinal boşluklu/karakterli (Örn: BURCU DÜREN.png)
+    clean_name = person_name.strip()
+    encoded_name = urllib.parse.quote(f"{clean_name}.png")
+    
+    # ⚠️ 'KULLANICI_ADINIZ' kısmını kendi GitHub kullanıcı adınızla değiştirmelisiniz!
+    return f"https://raw.githubusercontent.com/KULLANICI_ADINIZ/SEKRETER/main/{encoded_name}"
 
 # Görsel yüklenemediğinde çalışacak varsayılan yedek avatar
 DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
@@ -233,22 +220,17 @@ for i in range(0, len(df), cols_per_row):
             completed_key = f"completed_{idx}"
             
             with cols[j]:
-                # Ön hesaplamalar
                 temp_banka = st.session_state.get(banka_key, 0.0)
                 hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                 
-                # "İşlem Tamam" ibaresi yalnızca kullanıcı ödenen alanına veri kaydettiyse görünür
                 is_completed = st.session_state.get(completed_key, False)
-                
                 if is_completed:
                     status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                # GitHub PNG profil resmi URL'si
                 avatar_url = get_profile_image_url(person_name)
 
-                # HTML kart yapısı (alt parametresi kaldırıldı, isim sızması önlendi)
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
@@ -266,18 +248,14 @@ for i in range(0, len(df), cols_per_row):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
                     st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
                     
-                    # 1. Banka/ATM Manüel Giriş
                     banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
                     
-                    # Güncel Hesaplama
                     hesap_tutar = nakit_ft + nakit_odeme - banka_atm
                     st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                     
-                    # Callback fonksiyonu ile ödenen alanının girildiğini işaretleme
                     def mark_completed(k=completed_key):
                         st.session_state[k] = True
 
-                    # 2. Ödenen Manüel Giriş
                     if odenen_key not in st.session_state:
                         st.session_state[odenen_key] = hesap_tutar
 
@@ -290,11 +268,9 @@ for i in range(0, len(df), cols_per_row):
                         on_change=mark_completed
                     )
                     
-                    # Eğer kullanıcı input kutusunda değişiklik yaptıysa doğrudan tamamlandı olarak işaretle
                     if st.session_state.get(odenen_key) != hesap_tutar:
                         st.session_state[completed_key] = True
 
-                    # Mantık: Ödenen - HESAP (Net)
                     fark = odenen_tutar - hesap_tutar
                     
                     if fark > 0:
@@ -351,7 +327,7 @@ def generate_pdf(data_frame):
         parent=styles['Heading1'],
         fontSize=16,
         textColor=colors.HexColor('#1e3a8a'),
-        alignment=1, # Center
+        alignment=1,
         spaceAfter=15
     )
     
