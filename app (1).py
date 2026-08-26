@@ -187,7 +187,12 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
-            df.columns = df.columns.astype(str).str.strip()
+            # Sütun isimlerini string yap, boşlukları temizle ve yinelenen sütunları önle
+            df.columns = [str(col).strip() for col in df.columns]
+            cols = pd.Series(df.columns)
+            for dup in cols[cols.duplicated()].unique():
+                cols[cols == dup] = [f"{dup}_{i}" if i != 0 else dup for i in range(sum(cols == dup))]
+            df.columns = cols
             
             # Gelişmiş Esnek Sütun Eşleştirme
             rename_map = {}
@@ -231,13 +236,12 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # --- GÜNCELLENMİŞ VE TAM GÜVENLİ SAYI TEMİZLEME FONKSİYONU ---
+    # --- TAM GÜVENLİ SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         def parse_val(val):
             try:
                 if val is None:
                     return 0.0
-                # Seri / Liste veya çoklu değer durumunu engellemek için kontrol
                 if isinstance(val, (list, tuple, pd.Series, dict)):
                     return 0.0
                 
@@ -259,7 +263,7 @@ else:
         
         return series.apply(parse_val)
 
-    # Sayısal sütunları güvenli bir şekilde dönüştür
+    # Sütunları güvenli şekilde dönüştür ( KeyError almamak için varlık kontrolüyle)
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
         if col in df.columns:
             df[col] = clean_numeric_series(df[col])
