@@ -9,19 +9,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Gelişmiş Mavi ve Turuncu Degrade Tema CSS Kodları
+# Gelişmiş Canlı Mavi ve Turuncu Tema CSS Kodları
 st.markdown("""
     <style>
-    /* Ana Ekran Arka Planı (Koyu Lacivert & Mavi Gradyan) */
+    /* Ana Ekran Arka Planı (Canlı Mavi Gradyan) */
     .stApp {
-        background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #243b55 100%);
+        background: linear-gradient(135deg, #102a43 0%, #243b55 50%, #1f4068 100%);
         color: #ffffff;
     }
     
     /* Sol Kenar Çubuğu (Sidebar) Arka Planı */
     [data-testid="stSidebar"] {
-        background-color: #0d1b2a;
-        border-right: 1px solid #ff7b00;
+        background-color: #1a365d;
+        border-right: 2px solid #ff7b00;
     }
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #ffffff !important;
@@ -29,7 +29,7 @@ st.markdown("""
 
     /* Personel Kartları Tasarımı */
     .person-card {
-        background: linear-gradient(145deg, #1c2541, #0b132b);
+        background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
         border-radius: 14px;
         padding: 18px;
@@ -48,7 +48,7 @@ st.markdown("""
 
     /* Expander ve Kutuların Görünümü */
     .streamlit-expanderHeader {
-        background-color: #1c2541 !important;
+        background-color: #1e3a8a !important;
         color: #ff7b00 !important;
         border: 1px solid #ff7b00 !important;
         border-radius: 8px !important;
