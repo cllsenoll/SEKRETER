@@ -187,16 +187,21 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
-            df.columns = df.columns.astype(str).str.strip()
+            # Sütun adlarındaki görünmeyen boşlukları ve karakterleri temizle
+            df.columns = df.columns.astype(str).str.replace('\xa0', ' ').str.strip()
             
-            # Sütun adı eşleştirme (Personel Adı -> Personel)
+            # Sütun adı esnek eşleştirme
             rename_map = {}
             for col in df.columns:
-                col_lower = col.lower()
-                if "personel" in col_lower and "adı" in col_lower:
+                col_lower = col.lower().replace('\xa0', ' ')
+                if "personel" in col_lower and ("adı" in col_lower or "adi" in col_lower):
                     rename_map[col] = "Personel"
                 elif col_lower == "personel":
                     rename_map[col] = "Personel"
+                elif "nakit" in col_lower and "ft" in col_lower:
+                    rename_map[col] = "Nakit Ft. Tutarı Top"
+                elif "nakit" in col_lower and "ödeme" in col_lower:
+                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
             if rename_map:
                 df = df.rename(columns=rename_map)
@@ -232,7 +237,7 @@ else:
     # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         if series.dtype == object or series.dtype == str:
-            cleaned = series.astype(str).str.strip()
+            cleaned = series.astype(str).str.replace('\xa0', ' ').str.strip()
             cleaned = cleaned.str.replace('TL', '', case=False, regex=False)
             cleaned = cleaned.str.replace('₺', '', regex=False)
             cleaned = cleaned.str.replace(' ', '', regex=False)
@@ -256,10 +261,16 @@ else:
         else:
             return pd.to_numeric(series, errors='coerce').fillna(0.0)
 
+    # Personel isimlerini temizle
+    df["Personel"] = df["Personel"].astype(str).str.replace('\xa0', ' ').str.strip()
+
     # Sayısal sütunları güvenli bir şekilde dönüştür
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
         if col in df.columns:
             df[col] = clean_numeric_series(df[col])
+
+    # Aynı personele ait satırları gruplayarak tutarları topla (Mükerrer satır önleme)
+    df = df.groupby("Personel", as_index=False)[["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]].sum()
 
     def get_profile_image_url(person_name, g_user):
         clean_name = person_name.strip()
