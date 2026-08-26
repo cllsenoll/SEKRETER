@@ -27,14 +27,30 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Personel Kartları Tasarımı - Turuncu Tonlarında */
+    /* SADECE Excel Yükleme Kutusu (Dropzone) Turuncu Renk Tonunda */
+    [data-testid="stFileUploaderDropzone"] {
+        background: linear-gradient(135deg, #ff7b00 0%, #d97706 100%) !important;
+        border: 2px dashed #ffffff !important;
+        border-radius: 12px !important;
+    }
+    [data-testid="stFileUploaderDropzone"] * {
+        color: #ffffff !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button {
+        background-color: #ffffff !important;
+        color: #d97706 !important;
+        border-radius: 6px !important;
+        font-weight: bold !important;
+    }
+
+    /* Personel Kartları Tasarımı (Eski Orijinal Koyu Mavi Hali) */
     .person-card {
-        background: linear-gradient(145deg, #c2410c, #9a3412);
-        border: 2px solid #fdba74;
+        background: linear-gradient(145deg, #1e3a8a, #172554);
+        border: 2px solid #ff7b00;
         border-radius: 14px;
-        padding: 12px;
+        padding: 14px;
         text-align: center;
-        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.35);
+        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
         margin-bottom: 8px;
     }
     .card-content {
@@ -42,7 +58,16 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         gap: 12px;
-        margin-top: 4px;
+        margin-top: 6px;
+    }
+    .profile-img {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ff7b00;
+        background-color: #1a365d;
+        flex-shrink: 0;
     }
     .person-info {
         text-align: left;
@@ -57,7 +82,7 @@ st.markdown("""
     .person-net-tutar {
         font-size: 1.1rem;
         font-weight: bold;
-        color: #fef08a;
+        color: #00ff88;
     }
 
     /* Expander ve Kutuların Görünümü */
@@ -160,7 +185,7 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub SEKRETER deposundan profil resmi eşleştirme fonksiyonu
+# GitHub SEKRETER deposundan profil resmi URL'si oluşturan fonksiyon
 def get_profile_image_url(person_name):
     formatted_name = (
         person_name.strip()
@@ -181,6 +206,9 @@ def get_profile_image_url(person_name):
         .replace(" ", "_")
     )
     return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.jpg"
+
+# Güvenli SVG Varsayılan Kullanıcı Avatarı (Görsel yüklenemediğinde kesin gösterilir)
+DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
 # 4'lü Kolon yapısıyla kartları listeleme
 cols_per_row = 4
@@ -211,27 +239,22 @@ for i in range(0, len(df), cols_per_row):
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                # Kart Arka Planı Başlangıcı
+                # GitHub SEKRETER deposundan profil resmi URL'si
+                avatar_url = get_profile_image_url(person_name)
+
+                # HTML kart yapısı (Profil resmi img onerror ile garantili olarak görünür)
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
+                    <div class="card-content">
+                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{DEFAULT_AVATAR}';" class="profile-img" alt="{person_name}">
+                        <div class="person-info">
+                            <div class="person-name">{person_name}</div>
+                            <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Resim ve Bilgileri Yan Yana Yerleştirme (st.image kullanarak resim sorunları giderildi)
-                img_col, info_col = st.columns([1.2, 2.2])
-                with img_col:
-                    avatar_url = get_profile_image_url(person_name)
-                    try:
-                        st.image(avatar_url, width=45)
-                    except Exception:
-                        st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=45)
-                
-                with info_col:
-                    st.markdown(f"""
-                    <div class="person-name">{person_name}</div>
-                    <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
-                    """, unsafe_allow_html=True)
                 
                 with st.expander(f"⚙️ {person_name} - İşlem", expanded=False):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
