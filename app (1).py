@@ -208,13 +208,11 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub deponuzdaki gerçek dosya isimlendirmelerine uygun URL oluşturan fonksiyon
 def get_profile_image_url(person_name, g_user):
     clean_name = person_name.strip()
     encoded_name = urllib.parse.quote(f"{clean_name}.png")
     return f"https://raw.githubusercontent.com/{g_user}/SEKRETER/main/{encoded_name}"
 
-# Görsel yüklenemediğinde çalışacak varsayılan yedek avatar
 DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
 # 4'lü Kolon yapısıyla kartları listeleme
@@ -294,7 +292,7 @@ for i in range(0, len(df), cols_per_row):
                     else:
                         st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
-# --- GENEL KASA & PARA SAYMA ALANI (PERSONEL KARTLARININ HEMEN ALTINDA) ---
+# --- GENEL KASA & PARA SAYMA ALANI ---
 st.markdown("---")
 st.markdown("### 💵 Genel Şube Kasası / Para Sayma Paneli")
 st.markdown("Tüm şubenin toplam nakit kasasını saymak için banknot adetlerini giriniz.")
@@ -348,7 +346,6 @@ with st.container():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Şube Net Kasa ile KOPS KASA Karşılaştırma Mantığı (Açık / Fazla Kontrolü)
 sube_net_val = st.session_state.get('genel_net_kasa', 0.0)
 kops_val = st.session_state.get('genel_kops_kasa', 0.0)
 kasa_fark = sube_net_val - kops_val
@@ -387,7 +384,6 @@ for idx, row in df.iterrows():
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
 
-# Şube Kasa Özeti Kartları ve Uyarı Durumu
 col_ozet1, col_ozet2 = st.columns(2)
 with col_ozet1:
     st.markdown(f"### 🏦 Şube Net Kasa: **{sube_net_val:,.2f} TL**")
@@ -401,22 +397,39 @@ elif kasa_fark > 0:
 else:
     st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
-# PDF Raporu Oluşturma Fonksiyonu (Yatay Sayfa ve Tam Türkçe Karakter Destekli)
+# Geliştirilmiş Türkçe Karakter Destekli PDF Raporu Oluşturma Fonksiyonu
 def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
-    # Türkçe Karakterler İçin Font Kaydı
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    font_bold_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    # Yerleşik/Sistem destekli olası DejaVu Sans font yolları kontrolü
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "DejaVuSans.ttf"
+    ]
+    font_bold_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "DejaVuSans-Bold.ttf"
+    ]
     
-    if os.path.exists(font_path) and os.path.exists(font_bold_path):
-        pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', font_bold_path))
-        font_name = 'DejaVuSans'
-        font_bold = 'DejaVuSans-Bold'
-    else:
+    font_registered = False
+    for fp, fbp in zip(font_paths, font_bold_paths):
+        if os.path.exists(fp) and os.path.exists(fbp):
+            try:
+                pdfmetrics.registerFont(TTFont('DejaVuSans', fp))
+                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', fbp))
+                font_name = 'DejaVuSans'
+                font_bold = 'DejaVuSans-Bold'
+                font_registered = True
+                break
+            except Exception:
+                continue
+                
+    if not font_registered:
+        # Alternatif olarak Arial veya standart yerleşik fontlar taranamadıysa sistem genel yolları
         font_name = 'Helvetica'
         font_bold = 'Helvetica-Bold'
     
@@ -427,7 +440,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
         fontName=font_bold,
         fontSize=18,
         textColor=colors.HexColor('#1e3a8a'),
-        alignment=1, # Center
+        alignment=1,
         spaceAfter=6
     )
     
@@ -435,14 +448,14 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
         'SubTitleStyle',
         parent=styles['Normal'],
         fontName=font_bold,
-        fontSize=11,
-        textColor=colors.HexColor('#ff7b00'),
+        fontSize=10,
+        textColor=colors.HexColor('#d97706'),
         alignment=1,
         spaceAfter=15
     )
     
     elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
-    elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
+    elements.append(Paragraph(f"Sube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
     elements.append(Spacer(1, 10))
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
@@ -469,7 +482,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     return buffer.getvalue()
 
 if kasa_fark < 0:
-    durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
+    durum_str = f"ACIK ({abs(kasa_fark):,.2f} TL)"
 elif kasa_fark > 0:
     durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
 else:
