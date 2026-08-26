@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import urllib.parse
 import os
+import matplotlib
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
@@ -397,39 +398,23 @@ elif kasa_fark > 0:
 else:
     st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
-# Geliştirilmiş Türkçe Karakter Destekli PDF Raporu Oluşturma Fonksiyonu
+# Matplotlib içindeki yerleşik DejaVu fontlarını kullanarak Türkçe karakter hatasını kesin olarak çözen PDF fonksiyonu
 def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
-    # Yerleşik/Sistem destekli olası DejaVu Sans font yolları kontrolü
-    font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "DejaVuSans.ttf"
-    ]
-    font_bold_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-        "DejaVuSans-Bold.ttf"
-    ]
+    # Matplotlib veri dizininden DejaVuSans ttf dosyalarını güvenle alıyoruz
+    mpl_data_path = matplotlib.get_data_path()
+    font_path = os.path.join(mpl_data_path, 'fonts', 'ttf', 'DejaVuSans.ttf')
+    font_bold_path = os.path.join(mpl_data_path, 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
     
-    font_registered = False
-    for fp, fbp in zip(font_paths, font_bold_paths):
-        if os.path.exists(fp) and os.path.exists(fbp):
-            try:
-                pdfmetrics.registerFont(TTFont('DejaVuSans', fp))
-                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', fbp))
-                font_name = 'DejaVuSans'
-                font_bold = 'DejaVuSans-Bold'
-                font_registered = True
-                break
-            except Exception:
-                continue
-                
-    if not font_registered:
-        # Alternatif olarak Arial veya standart yerleşik fontlar taranamadıysa sistem genel yolları
+    try:
+        pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', font_bold_path))
+        font_name = 'DejaVuSans'
+        font_bold = 'DejaVuSans-Bold'
+    except Exception:
         font_name = 'Helvetica'
         font_bold = 'Helvetica-Bold'
     
@@ -455,7 +440,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     )
     
     elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
-    elements.append(Paragraph(f"Sube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
+    elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
     elements.append(Spacer(1, 10))
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
@@ -482,7 +467,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     return buffer.getvalue()
 
 if kasa_fark < 0:
-    durum_str = f"ACIK ({abs(kasa_fark):,.2f} TL)"
+    durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
 elif kasa_fark > 0:
     durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
 else:
