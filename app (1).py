@@ -3,7 +3,7 @@ import pandas as pd
 import io
 import urllib.parse
 import os
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -283,22 +283,35 @@ for i in range(0, len(df), cols_per_row):
                     else:
                         st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
-                    # --- YENİ ÖZELLİK: KASA & PARA SAYMA ALANI ---
+                    # KASA & PARA SAYMA ALANI (200, 100, 50, 20, 10, 5 TL Banknot Sayımı)
                     st.markdown("---")
                     st.markdown("💵 **Kasa / Para Sayma (Banknot Adetleri)**")
                     
-                    b200 = st.number_input("200 TL Adet", min_value=0, value=0, step=1, key=f"b200_{idx}")
-                    b100 = st.number_input("100 TL Adet", min_value=0, value=0, step=1, key=f"b100_{idx}")
-                    b50 = st.number_input("50 TL Adet", min_value=0, value=0, step=1, key=f"b50_{idx}")
-                    b20 = st.number_input("20 TL Adet", min_value=0, value=0, step=1, key=f"b20_{idx}")
-                    b10 = st.number_input("10 TL Adet", min_value=0, value=0, step=1, key=f"b10_{idx}")
-                    b5 = st.number_input("5 TL Adet", min_value=0, value=0, step=1, key=f"b5_{idx}")
+                    b200_key = f"b200_{idx}"
+                    b100_key = f"b100_{idx}"
+                    b50_key = f"b50_{idx}"
+                    b20_key = f"b20_{idx}"
+                    b10_key = f"b10_{idx}"
+                    b5_key = f"b5_{idx}"
+                    manuel_kasa_key = f"manuel_kasa_{idx}"
+
+                    b200 = st.number_input("200 TL Adet", min_value=0, value=st.session_state.get(b200_key, 0), step=1, key=b200_key)
+                    b100 = st.number_input("100 TL Adet", min_value=0, value=st.session_state.get(b100_key, 0), step=1, key=b100_key)
+                    b50 = st.number_input("50 TL Adet", min_value=0, value=st.session_state.get(b50_key, 0), step=1, key=b50_key)
+                    b20 = st.number_input("20 TL Adet", min_value=0, value=st.session_state.get(b20_key, 0), step=1, key=b20_key)
+                    b10 = st.number_input("10 TL Adet", min_value=0, value=st.session_state.get(b10_key, 0), step=1, key=b10_key)
+                    b5 = st.number_input("5 TL Adet", min_value=0, value=st.session_state.get(b5_key, 0), step=1, key=b5_key)
                     
                     toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
-                    st.info(f"📊 Hesaplanan Kasa Toplamı: **{toplam_sayilan_kasa:,.2f} TL**")
+                    st.info(f"📊 Sayılan Kasa Toplamı: **{toplam_sayilan_kasa:,.2f} TL**")
                     
-                    # İsteğe bağlı manüel ek kasa girişi veya bu sayılanı aktarma butonu
-                    manuel_kasa = st.number_input("Manüel Kasa Değeri", min_value=0.0, value=float(toplam_sayilan_kasa), step=10.0, key=f"manuel_kasa_{idx}")
+                    if manuel_kasa_key not in st.session_state:
+                        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
+                    else:
+                        # Eğer kullanıcı sayım yaptıysa otomatik güncelleyelim veya manüel esneklik sağlayalım
+                        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
+
+                    st.number_input("Net Kasa Değeri", min_value=0.0, value=st.session_state[manuel_kasa_key], step=10.0, key=manuel_kasa_key)
 
 # Alt Özet Tablosu ve PDF İndirme Butonu
 st.markdown("---")
@@ -338,17 +351,20 @@ for idx, row in df.iterrows():
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
 
-# PDF Raporu Oluşturma Fonksiyonu (Türkçe Karakter Destekli)
+# PDF Raporu Oluşturma Fonksiyonu (Yatay Sayfa ve Tam Türkçe Karakter Destekli)
 def generate_pdf(data_frame):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=25, leftMargin=25, topMargin=30, bottomMargin=30)
+    # Yatay sayfa boyutu (landscape letter) kullanarak sütunların sığmasını sağlıyoruz
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
     # Türkçe Karakterler İçin Font Kaydı
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    if os.path.exists(font_path):
+    font_bold_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    
+    if os.path.exists(font_path) and os.path.exists(font_bold_path):
         pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', font_bold_path))
         font_name = 'DejaVuSans'
         font_bold = 'DejaVuSans-Bold'
     else:
@@ -360,7 +376,7 @@ def generate_pdf(data_frame):
         'TitleStyle',
         parent=styles['Heading1'],
         fontName=font_bold,
-        fontSize=15,
+        fontSize=18,
         textColor=colors.HexColor('#1e3a8a'),
         alignment=1, # Center
         spaceAfter=15
@@ -371,19 +387,20 @@ def generate_pdf(data_frame):
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
     
-    t = Table(table_data, colWidths=[90, 65, 65, 55, 55, 55, 65, 75])
+    # Yatay sayfaya tam oturan geniş sütun ölçüleri (Toplam ~730 pt)
+    t = Table(table_data, colWidths=[130, 85, 85, 75, 75, 75, 95, 110])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), font_bold),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
         ('FONTNAME', (0, 1), (-1, -1), font_name),
-        ('FONTSIZE', (0, 1), (-1, -1), 7.5),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
     ]))
     
