@@ -13,7 +13,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # Sayfa yapılandırması
 st.set_page_config(
-    page_title="Günlük Personel Hesap and Kasa Takibi",
+    page_title="Günlük Personel Hesap ve Kasa Takibi",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -37,7 +37,7 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* SADECE Excel Yükleme Kutusu (Dropzone) Turuncu Renk Tonunda */
+    /* SADECE Excel/CSV Yükleme Kutusu (Dropzone) Turuncu Renk Tonunda */
     [data-testid="stFileUploaderDropzone"] {
         background: linear-gradient(135deg, #ff7b00 0%, #d97706 100%) !important;
         border: 2px dashed #ffffff !important;
@@ -159,57 +159,65 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("📂 **Rapor / Liste Yükle**")
-    uploaded_file = st.file_uploader("HESAP Excel Dosyasını Yükle", type=["xlsx", "xls", "csv"])
+    uploaded_file = st.file_uploader("HESAP Dosyasını Yükle (Excel veya CSV)", type=["xlsx", "xls", "csv"])
     
     st.markdown("---")
     st.button("💰 HESAP", use_container_width=True, type="primary")
 
 # Ana Başlık
-st.markdown("# 💰 Günlük Personel Hesap and Kasa Takibi")
+st.markdown("# 💰 Günlük Personel Hesap ve Kasa Takibi")
 st.markdown("#### Personel Durum Kartları")
 st.markdown("---")
 
-# Dosya yükleme kontrolü ve veri okuma
+# Dosya yükleme kontrolü ve akıllı format algılama
 df = None
 excel_kops_degeri = None
 
 if uploaded_file is not None:
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+        file_name_lower = uploaded_file.name.lower()
+        if file_name_lower.endswith('.csv'):
+            # Türkçe karakterler ve yaygın CSV ayraçları için deneme
+            try:
+                df = pd.read_csv(uploaded_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, encoding='latin5')
         else:
             df = pd.read_excel(uploaded_file)
         
         # Sütun adlarındaki olası boşlukları temizle
         df.columns = df.columns.astype(str).str.strip()
         
-        # Eğer Excel dosyasında KOPS Kasa verisi varsa yakala
+        # Eğer dosyada KOPS Kasa verisi varsa yakala
         for col in df.columns:
             if "kops" in col.lower():
                 val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
                 if not val_candidates.empty:
                     excel_kops_degeri = float(val_candidates.iloc[0])
 
-        st.sidebar.success("HESAP Excel dosyası başarıyla yüklendi!")
+        st.sidebar.success("Dosya başarıyla yüklendi ve okundu!")
     except Exception as e:
         st.sidebar.error(f"Dosya okuma hatası: {e}")
         df = None
 
-# Eğer dosya yüklenmediyse df boş (None) kalacak ve ekran boş gösterilecek
+# Dosya yüklenmediyse ekran tamamen boş kalır
 if df is None:
-    st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı Excel dosyanızı yükleyin.")
+    st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
     # Gerekli sütun kontrolü
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
-        st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}. Lütfen sütun adlarını kontrol edin.")
+        st.error(f"Yüklenen dosyada eksik sütunlar var: {missing_cols}. Lütfen sütun adlarını kontrol edin.")
         st.stop()
 
-    # Sayısal sütunların tipini güvence altına al
-    df["Nakit Ft. Tutarı Top"] = pd.to_numeric(df["Nakit Ft. Tutarı Top"], errors='coerce').fillna(0.0)
-    df["Nakit Ödeme Tutarı Topl."] = pd.to_numeric(df["Nakit Ödeme Tutarı Topl."], errors='coerce').fillna(0.0)
+    # Sayısal sütunların tipini güvence altına al (Virgül/Nokta ondalık dönüşümleri dahil)
+    for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
+        if df[col].dtype == object:
+            df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
     def get_profile_image_url(person_name, g_user):
         clean_name = person_name.strip()
