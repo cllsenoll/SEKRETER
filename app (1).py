@@ -163,14 +163,12 @@ if uploaded_file is not None:
         
         if file_name_lower.endswith('.csv'):
             file_bytes = uploaded_file.getvalue()
-            
             csv_configs = [
                 {'sep': ';', 'encoding': 'cp1254'},
                 {'sep': ';', 'encoding': 'utf-8'},
                 {'sep': ',', 'encoding': 'utf-8'},
                 {'sep': ',', 'encoding': 'cp1254'}
             ]
-            
             for config in csv_configs:
                 try:
                     temp_df = pd.read_csv(io.BytesIO(file_bytes), sep=config['sep'], encoding=config['encoding'])
@@ -179,40 +177,41 @@ if uploaded_file is not None:
                         break
                 except Exception:
                     continue
-            
             if df is None:
                 df = pd.read_csv(io.BytesIO(file_bytes), sep=None, engine='python')
-                
         else:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
-            # Sütun isimlerini string yap, boşlukları temizle ve yinelenen sütunları önle
+            # Sütun isimlerindeki boşlukları ve gereksiz karakterleri temizle
             df.columns = [str(col).strip() for col in df.columns]
-            cols = pd.Series(df.columns)
-            for dup in cols[cols.duplicated()].unique():
-                cols[cols == dup] = [f"{dup}_{i}" if i != 0 else dup for i in range(sum(cols == dup))]
-            df.columns = cols
             
-            # Gelişmiş Esnek Sütun Eşleştirme
+            # --- ÇOK ESNEK SÜTUN EŞLEŞTİRME ---
             rename_map = {}
             for col in df.columns:
-                col_lower = col.lower()
-                if "personel" in col_lower and ("adı" in col_lower or "adi" in col_lower or col_lower == "personel"):
-                    rename_map[col] = "Personel"
-                elif "nakit" in col_lower and ("ft" in col_lower or "fatura" in col_lower):
+                col_clean = col.lower().replace('.', '').replace(' ', '')
+                
+                # Personel sütunu eşleşmesi
+                if any(x in col_clean for x in ["personel", "adi", "isim", "adsoyad"]):
+                    if "personel" not in rename_map.values():
+                        rename_map[col] = "Personel"
+                
+                # Nakit Ft Tutarı Top sütunu eşleşmesi
+                elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
                     rename_map[col] = "Nakit Ft. Tutarı Top"
-                elif "nakit" in col_lower and "ödeme" in col_lower:
+                
+                # Nakit Ödeme Tutarı Topl. sütunu eşleşmesi
+                elif "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
                     rename_map[col] = "Nakit Ödeme Tutarı Topl."
-            
-            if rename_map:
-                df = df.rename(columns=rename_map)
-
-            for col in df.columns:
-                if "kops" in col.lower():
+                
+                # KOPS Kasa sütunu eşleşmesi
+                elif "kops" in col_clean:
                     val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
                     if not val_candidates.empty:
                         excel_kops_degeri = float(val_candidates.iloc[0])
+            
+            if rename_map:
+                df = df.rename(columns=rename_map)
 
             st.sidebar.success("Dosya başarıyla yüklendi ve tarandı!")
             
@@ -223,13 +222,14 @@ if uploaded_file is not None:
 if df is None:
     st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
+    # Gerekli sütun kontrolü
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
-        st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
-        st.warning(f"🧐 **Dosyanızdan Çekebildiğimiz Sütunlar Şunlar:** {list(df.columns)}")
-        st.info("Lütfen dosyanızdaki sütun başlıklarının harfi harfine doğru olduğundan emin olun.")
+        st.error(f"❌ Yüklenen dosyada aradığımız sütunlar tam olarak eşleşmedi!\n**Eksik/Bulunamayan Sütunlar:** {missing_cols}")
+        st.warning(f"🧐 **Dosyanızda Okunan Tüm Sütun Başlıkları Şunlar:** {list(df.columns)}")
+        st.info("Lütfen Excel dosyanızdaki sütun başlıklarının 'Personel', 'Nakit Ft. Tutarı Top' ve 'Nakit Ödeme Tutarı Topl.' olduğundan emin olun.")
         st.stop()
 
     if len(df) == 0:
@@ -263,7 +263,7 @@ else:
         
         return series.apply(parse_val)
 
-    # Sütunları güvenli şekilde dönüştür ( KeyError almamak için varlık kontrolüyle)
+    # Değerleri güvenli sayısal formata dönüştür
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
         if col in df.columns:
             df[col] = clean_numeric_series(df[col])
