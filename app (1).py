@@ -94,6 +94,17 @@ st.markdown("""
         color: #00ff88;
     }
 
+    /* Kasa Sayaç Paneli Tasarımı */
+    .kasa-panel {
+        background: linear-gradient(145deg, #1e3a8a, #0f172a);
+        border: 2px solid #ff7b00;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
+        margin-top: 15px;
+        margin-bottom: 25px;
+    }
+
     /* Expander ve Kutuların Görünümü */
     .streamlit-expanderHeader {
         background-color: #1e3a8a !important;
@@ -104,7 +115,7 @@ st.markdown("""
     }
     
     /* Input ve Widget Etiketlerini Beyaz Yapma */
-    .stNumberInput label, .stMetric label, .stTextInput label {
+    .stNumberInput label, .stMetric label, .stTextInput label, .stSelectbox label {
         color: #ffffff !important;
     }
 
@@ -283,35 +294,63 @@ for i in range(0, len(df), cols_per_row):
                     else:
                         st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
-                    # KASA & PARA SAYMA ALANI (200, 100, 50, 20, 10, 5 TL Banknot Sayımı)
-                    st.markdown("---")
-                    st.markdown("💵 **Kasa / Para Sayma (Banknot Adetleri)**")
-                    
-                    b200_key = f"b200_{idx}"
-                    b100_key = f"b100_{idx}"
-                    b50_key = f"b50_{idx}"
-                    b20_key = f"b20_{idx}"
-                    b10_key = f"b10_{idx}"
-                    b5_key = f"b5_{idx}"
-                    manuel_kasa_key = f"manuel_kasa_{idx}"
+# --- PERSONEL KARTLARININ HEMEN ALTINDA: KASA & PARA SAYMA ALANI ---
+st.markdown("---")
+st.markdown("### 💵 Kasa / Para Sayma ve Net Kasa Paneli")
+st.markdown("Seçilen personel veya genel şube kasası için banknot adetlerini girerek toplam tutarı hesaplayabilirsiniz.")
 
-                    b200 = st.number_input("200 TL Adet", min_value=0, value=st.session_state.get(b200_key, 0), step=1, key=b200_key)
-                    b100 = st.number_input("100 TL Adet", min_value=0, value=st.session_state.get(b100_key, 0), step=1, key=b100_key)
-                    b50 = st.number_input("50 TL Adet", min_value=0, value=st.session_state.get(b50_key, 0), step=1, key=b50_key)
-                    b20 = st.number_input("20 TL Adet", min_value=0, value=st.session_state.get(b20_key, 0), step=1, key=b20_key)
-                    b10 = st.number_input("10 TL Adet", min_value=0, value=st.session_state.get(b10_key, 0), step=1, key=b10_key)
-                    b5 = st.number_input("5 TL Adet", min_value=0, value=st.session_state.get(b5_key, 0), step=1, key=b5_key)
-                    
-                    toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
-                    st.info(f"📊 Sayılan Kasa Toplamı: **{toplam_sayilan_kasa:,.2f} TL**")
-                    
-                    if manuel_kasa_key not in st.session_state:
-                        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
-                    else:
-                        # Eğer kullanıcı sayım yaptıysa otomatik güncelleyelim veya manüel esneklik sağlayalım
-                        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
+# Hangi personel için kasa sayılacağını seçme
+person_list = df["Personel"].tolist()
+selected_person_for_kasa = st.selectbox("Kasa Sayımı Yapılacak Personel", person_list, key="selected_person_kasa")
 
-                    st.number_input("Net Kasa Değeri", min_value=0.0, value=st.session_state[manuel_kasa_key], step=10.0, key=manuel_kasa_key)
+# Seçilen personelin indexini bulma
+selected_idx = df[df["Personel"] == selected_person_for_kasa].index[0]
+
+with st.container():
+    st.markdown('<div class="kasa-panel">', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    b200_key = f"b200_genel_{selected_idx}"
+    b100_key = f"b100_genel_{selected_idx}"
+    b50_key = f"b50_genel_{selected_idx}"
+    b20_key = f"b20_genel_{selected_idx}"
+    b10_key = f"b10_genel_{selected_idx}"
+    b5_key = f"b5_genel_{selected_idx}"
+    manuel_kasa_key = f"manuel_kasa_genel_{selected_idx}"
+
+    with col1:
+        b200 = st.number_input("200 TL Adet", min_value=0, value=st.session_state.get(b200_key, 0), step=1, key=b200_key)
+        b20 = st.number_input("20 TL Adet", min_value=0, value=st.session_state.get(b20_key, 0), step=1, key=b20_key)
+    with col2:
+        b100 = st.number_input("100 TL Adet", min_value=0, value=st.session_state.get(b100_key, 0), step=1, key=b100_key)
+        b10 = st.number_input("10 TL Adet", min_value=0, value=st.session_state.get(b10_key, 0), step=1, key=b10_key)
+    with col3:
+        b50 = st.number_input("50 TL Adet", min_value=0, value=st.session_state.get(b50_key, 0), step=1, key=b50_key)
+        b5 = st.number_input("5 तले / 5 TL Adet", min_value=0, value=st.session_state.get(b5_key, 0), step=1, key=b5_key)
+
+    toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_res1, c_res2 = st.columns(2)
+    with c_res1:
+        st.info(f"📊 Sayılan Banknot Toplamı: **{toplam_sayilan_kasa:,.2f} TL**")
+    
+    if manuel_kasa_key not in st.session_state:
+        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
+    else:
+        st.session_state[manuel_kasa_key] = float(toplam_sayilan_kasa)
+
+    with c_res2:
+        net_kasa_giris = st.number_input(
+            f"📥 {selected_person_for_kasa} - Net Kasa Değeri", 
+            min_value=0.0, 
+            value=st.session_state[manuel_kasa_key], 
+            step=10.0, 
+            key=manuel_kasa_key
+        )
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Alt Özet Tablosu ve PDF İndirme Butonu
 st.markdown("---")
@@ -328,7 +367,7 @@ for idx, row in df.iterrows():
     odenen_val = st.session_state.get(f"odenen_{idx}", hesap)
     fark_val = odenen_val - hesap
     
-    manuel_kasa_val = st.session_state.get(f"manuel_kasa_{idx}", 0.0)
+    manuel_kasa_val = st.session_state.get(f"manuel_kasa_genel_{idx}", 0.0)
     
     if fark_val > 0:
         durum_metni = f"Fazla: +{fark_val:,.2f} TL"
@@ -354,7 +393,6 @@ st.dataframe(summary_df, use_container_width=True)
 # PDF Raporu Oluşturma Fonksiyonu (Yatay Sayfa ve Tam Türkçe Karakter Destekli)
 def generate_pdf(data_frame):
     buffer = io.BytesIO()
-    # Yatay sayfa boyutu (landscape letter) kullanarak sütunların sığmasını sağlıyoruz
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
@@ -387,7 +425,6 @@ def generate_pdf(data_frame):
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
     
-    # Yatay sayfaya tam oturan geniş sütun ölçüleri (Toplam ~730 pt)
     t = Table(table_data, colWidths=[130, 85, 85, 75, 75, 75, 95, 110])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
