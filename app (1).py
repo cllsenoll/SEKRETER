@@ -1,5 +1,10 @@
 import streamlit as st
 import pandas as pd
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -43,7 +48,7 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* Personel Kartları Tasarımı (Eski Orijinal Koyu Mavi Hali) */
+    /* Personel Kartları Tasarımı (Orijinal Koyu Mavi Hali) */
     .person-card {
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
@@ -185,7 +190,7 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub SEKRETER deposundan profil resmi URL'si oluşturan fonksiyon
+# GitHub SEKRETER deposundan profil resmi URL'si oluşturan fonksiyon (PNG formatında)
 def get_profile_image_url(person_name):
     formatted_name = (
         person_name.strip()
@@ -205,9 +210,10 @@ def get_profile_image_url(person_name):
         .replace("ı", "i")
         .replace(" ", "_")
     )
-    return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.jpg"
+    # KULLANICI_ADI kısmını kendi GitHub kullanıcı adınız veya depo yolunuzla güncelleyebilirsiniz.
+    return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.png"
 
-# Güvenli SVG Varsayılan Kullanıcı Avatarı (Görsel yüklenemediğinde kesin gösterilir)
+# Güvenli SVG Varsayılan Kullanıcı Avatarı
 DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
 # 4'lü Kolon yapısıyla kartları listeleme
@@ -239,10 +245,10 @@ for i in range(0, len(df), cols_per_row):
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                # GitHub SEKRETER deposundan profil resmi URL'si
+                # GitHub SEKRETER deposundan PNG profil resmi URL'si
                 avatar_url = get_profile_image_url(person_name)
 
-                # HTML kart yapısı (Profil resmi img onerror ile garantili olarak görünür)
+                # HTML kart yapısı (PNG resim destekli ve onerror yedekli)
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
@@ -298,7 +304,7 @@ for i in range(0, len(df), cols_per_row):
                     else:
                         st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
-# Alt Özet Tablosu ve İndirme Butonu
+# Alt Özet Tablosu ve PDF İndirme Butonu
 st.markdown("---")
 st.markdown("### 📊 Genel Hesap Özeti Tablosu")
 
@@ -322,27 +328,64 @@ for idx, row in df.iterrows():
     
     summary_data.append({
         "Personel": person_name,
-        "Nakit Ft. Top": nakit_ft,
-        "Nakit Ödeme Top": nakit_odeme,
-        "Banka / ATM": banka_val,
-        "HESAP": hesap,
-        "Ödenen": odenen_val,
+        "Nakit Ft. Top": f"{nakit_ft:,.2f} TL",
+        "Nakit Ödeme Top": f"{nakit_odeme:,.2f} TL",
+        "Banka / ATM": f"{banka_val:,.2f} TL",
+        "HESAP": f"{hesap:,.2f} TL",
+        "Ödenen": f"{odenen_val:,.2f} TL",
         "Eksik/Fazla": durum_metni
     })
 
 summary_df = pd.DataFrame(summary_data)
-st.dataframe(summary_df.style.format({
-    "Nakit Ft. Top": "{:,.2f} TL",
-    "Nakit Ödeme Top": "{:,.2f} TL",
-    "Banka / ATM": "{:,.2f} TL",
-    "HESAP": "{:,.2f} TL",
-    "Ödenen": "{:,.2f} TL"
-}), use_container_width=True)
+st.dataframe(summary_df, use_container_width=True)
 
-csv = summary_df.to_csv(index=False).encode('utf-8')
+# PDF Raporu Oluşturma Fonksiyonu
+def generate_pdf(data_frame):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#1e3a8a'),
+        alignment=1, # Center
+        spaceAfter=15
+    )
+    
+    elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
+    elements.append(Spacer(1, 10))
+    
+    # Tablo verilerini hazırlama
+    table_data = [list(data_frame.columns)] + data_frame.values.tolist()
+    
+    # Tablo boyutlandırma ve biçimlendirme
+    t = Table(table_data, colWidths=[105, 75, 75, 65, 65, 65, 65])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
+    ]))
+    
+    elements.append(t)
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+pdf_bytes = generate_pdf(summary_df)
+
 st.download_button(
-    label="📥 Hesap Özetini CSV Olarak İndir",
-    data=csv,
-    file_name='gunluk_hesap_ozeti.csv',
-    mime='text/csv',
+    label="📥 Hesap Özetini PDF Olarak İndir",
+    data=pdf_bytes,
+    file_name='gunluk_hesap_ozeti.pdf',
+    mime='application/pdf',
 )
