@@ -187,16 +187,20 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
+            # Sütun adlarındaki baştaki ve sondaki boşlukları temizle
             df.columns = df.columns.astype(str).str.strip()
             
-            # Sütun adı eşleştirme (Personel Adı -> Personel)
+            # --- AKILLI SÜTUN ADI EŞLEŞTİRME ---
             rename_map = {}
             for col in df.columns:
-                col_lower = col.lower()
-                if "personel" in col_lower and "adı" in col_lower:
+                col_clean = col.lower().replace("ı", "i").replace("ş", "s").replace("ğ", "g").replace("ü", "u").replace("ö", "o").replace("ç", "c")
+                
+                if "personel" in col_clean:
                     rename_map[col] = "Personel"
-                elif col_lower == "personel":
-                    rename_map[col] = "Personel"
+                elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
+                    rename_map[col] = "Nakit Ft. Tutarı Top"
+                elif "nakit" in col_clean and ("odeme" in col_clean or "ödeme" in col_clean):
+                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
             if rename_map:
                 df = df.rename(columns=rename_map)
@@ -216,13 +220,14 @@ if uploaded_file is not None:
 if df is None:
     st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
+    # Kullanıcıya bilgilendirme amaçlı okunan sütunları gösterelim ki hata durumunda kolay fark edilsin
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
-        st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
-        st.warning(f"🧐 **Dosyanızdan Çekebildiğimiz Sütunlar Şunlar:** {list(df.columns)}")
-        st.info("Lütfen dosyanızdaki sütun başlıklarının harfi harfine doğru olduğundan emin olun.")
+        st.error(f"❌ Yüklenen dosyada aradığımız sütunlar tam olarak eşleşmedi!\n**Eksik/Bulunamayan Sütunlar:** {missing_cols}")
+        st.warning(f"🧐 **Dosyanızdaki Gerçek Sütun Başlıkları Şunlar:** {list(df.columns)}")
+        st.info("Lütfen Excel dosyanızdaki ilgili sütun başlığının 'Nakit Ödeme' veya benzeri bir ifade içerdiğinden emin olun.")
         st.stop()
 
     if len(df) == 0:
