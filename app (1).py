@@ -9,59 +9,80 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Özel CSS Stilleri (Koyu Lacivert ve Turuncu Tema)
+# Gelişmiş Mavi ve Turuncu Degrade Tema CSS Kodları
 st.markdown("""
     <style>
-    /* Ana arayüz arka planı (Koyu Lacivert) */
-    .main {
-        background-color: #0b132b;
+    /* Ana Ekran Arka Planı (Koyu Lacivert & Mavi Gradyan) */
+    .stApp {
+        background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #243b55 100%);
         color: #ffffff;
     }
-    /* Sol kenar çubuğu arka planı */
+    
+    /* Sol Kenar Çubuğu (Sidebar) Arka Planı */
     [data-testid="stSidebar"] {
-        background-color: #1c2541;
-        color: #ffffff;
+        background-color: #0d1b2a;
+        border-right: 1px solid #ff7b00;
     }
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #ffffff !important;
     }
-    /* Personel Kartı Tasarımı (Turuncu/Lacivert Vurgulu) */
+
+    /* Personel Kartları Tasarımı */
     .person-card {
-        background: #1c2541;
+        background: linear-gradient(145deg, #1c2541, #0b132b);
         border: 2px solid #ff7b00;
-        border-radius: 12px;
-        padding: 15px;
+        border-radius: 14px;
+        padding: 18px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(255, 123, 0, 0.2);
-        margin-bottom: 10px;
+        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
+        margin-bottom: 8px;
     }
     .person-name {
-        font-size: 1.05rem;
+        font-size: 1.1rem;
         font-weight: bold;
         color: #ffffff;
         margin-top: 8px;
         margin-bottom: 5px;
+        letter-spacing: 0.5px;
     }
+
+    /* Expander ve Kutuların Görünümü */
+    .streamlit-expanderHeader {
+        background-color: #1c2541 !important;
+        color: #ff7b00 !important;
+        border: 1px solid #ff7b00 !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+    }
+    
     /* Başlıklar */
     h1, h2, h3, h4 {
         color: #ffffff !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-    /* Birincil Butonlar (Turuncu) */
+
+    /* Turuncu Vurgulu Butonlar */
     .stButton>button {
-        background-color: #ff7b00;
+        background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
         color: white;
         border-radius: 8px;
         font-weight: bold;
         border: none;
+        box-shadow: 0 4px 10px rgba(255, 123, 0, 0.3);
     }
     .stButton>button:hover {
-        background-color: #ff9100;
+        background: linear-gradient(90deg, #ff9e00 0%, #ffb703 100%);
         color: white;
+    }
+
+    /* Metrik Alanları */
+    [data-testid="stMetricValue"] {
+        color: #ff7b00 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Kenar Çubuğu (Sidebar) - F4 Ödeme Listesi kaldırıldı
+# Kenar Çubuğu (Sidebar)
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/money-bag.png", width=60)
     st.markdown("### F4 / HESAP")
@@ -143,7 +164,7 @@ for i in range(0, len(df), cols_per_row):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                with st.expander(f"⚙️ Detay & İşlem", expanded=False):
+                with st.expander(f"⚙️ {person_name} - İşlem", expanded=False):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
                     st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
                     
