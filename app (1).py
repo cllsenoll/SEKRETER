@@ -317,37 +317,42 @@ with st.container():
     toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    c_res1, c_res2 = st.columns(2)
-    with c_res1:
-        st.info(f"📊 Toplam Sayılan Banknot: **{toplam_sayilan_kasa:,.2f} TL**")
+    st.info(f"📊 Toplam Sayılan Banknot: **{toplam_sayilan_kasa:,.2f} TL**")
     
     if "genel_net_kasa" not in st.session_state:
         st.session_state["genel_net_kasa"] = float(toplam_sayilan_kasa)
     else:
         st.session_state["genel_net_kasa"] = float(toplam_sayilan_kasa)
 
-    with c_res2:
+    # İki kutucuk eşit boyutta ve daha küçük görünüm için yan yana kolonlar
+    st.markdown("<br>", unsafe_allow_html=True)
+    k_col1, k_col2 = st.columns(2)
+    
+    with k_col1:
         net_kasa_giris = st.number_input(
-            "📥 Şube Net Kasa Değeri (Manüel Düzenlenebilir)", 
+            "📥 Şube Net Kasa Değeri", 
             min_value=0.0, 
             value=st.session_state["genel_net_kasa"], 
             step=10.0, 
             key="genel_net_kasa"
         )
-
-    # Yeni Eklenen KOPS KASA Alanı
-    st.markdown("<br>", unsafe_allow_html=True)
-    kops_kasa_giris = st.number_input(
-        "📥 KOPS KASA (Manüel Düzenlenebilir)", 
-        min_value=0.0, 
-        value=st.session_state.get("genel_kops_kasa", 0.0), 
-        step=10.0, 
-        key="genel_kops_kasa"
-    )
+        
+    with k_col2:
+        kops_kasa_giris = st.number_input(
+            "📥 KOPS KASA", 
+            min_value=0.0, 
+            value=st.session_state.get("genel_kops_kasa", 0.0), 
+            step=10.0, 
+            key="genel_kops_kasa"
+        )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Alt Özet Tablosu ve PDF İndirme Butonu
+# Şube Net Kasa ile KOPS KASA Karşılaştırma Mantığı (Açık / Fazla Kontrolü)
+sube_net_val = st.session_state.get('genel_net_kasa', 0.0)
+kops_val = st.session_state.get('genel_kops_kasa', 0.0)
+kasa_fark = sube_net_val - kops_val
+
 st.markdown("---")
 st.markdown("### 📊 Genel Hesap Özeti Tablosu")
 
@@ -382,15 +387,22 @@ for idx, row in df.iterrows():
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
 
-# Şube Kasa Özeti Kartları
+# Şube Kasa Özeti Kartları ve Uyarı Durumu
 col_ozet1, col_ozet2 = st.columns(2)
 with col_ozet1:
-    st.markdown(f"### 🏦 Şube Net Kasa: **{st.session_state.get('genel_net_kasa', 0.0):,.2f} TL**")
+    st.markdown(f"### 🏦 Şube Net Kasa: **{sube_net_val:,.2f} TL**")
 with col_ozet2:
-    st.markdown(f"### 💳 KOPS KASA: **{st.session_state.get('genel_kops_kasa', 0.0):,.2f} TL**")
+    st.markdown(f"### 💳 KOPS KASA: **{kops_val:,.2f} TL**")
+
+if kasa_fark < 0:
+    st.markdown(f"<div style='background-color: rgba(255, 51, 51, 0.2); border: 2px solid #ff3333; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; margin-top: 10px;'>⚠️ Kasa Durumu: AÇIK ({abs(kasa_fark):,.2f} TL Eksik)</div>", unsafe_allow_html=True)
+elif kasa_fark > 0:
+    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>💵 Kasa Durumu: FAZLA ({kasa_fark:,.2f} TL Fazla)</div>", unsafe_allow_html=True)
+else:
+    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
 # PDF Raporu Oluşturma Fonksiyonu (Yatay Sayfa ve Tam Türkçe Karakter Destekli)
-def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari):
+def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
@@ -416,7 +428,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari):
         fontSize=18,
         textColor=colors.HexColor('#1e3a8a'),
         alignment=1, # Center
-        spaceAfter=8
+        spaceAfter=6
     )
     
     subtitle_style = ParagraphStyle(
@@ -430,7 +442,7 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari):
     )
     
     elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
-    elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL", subtitle_style))
+    elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
     elements.append(Spacer(1, 10))
     
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
@@ -456,7 +468,14 @@ def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari):
     buffer.seek(0)
     return buffer.getvalue()
 
-pdf_bytes = generate_pdf(summary_df, st.session_state.get('genel_net_kasa', 0.0), st.session_state.get('genel_kops_kasa', 0.0))
+if kasa_fark < 0:
+    durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
+elif kasa_fark > 0:
+    durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
+else:
+    durum_str = "TAMAM"
+
+pdf_bytes = generate_pdf(summary_df, sube_net_val, kops_val, durum_str)
 
 st.download_button(
     label="📥 Hesap Özetini ve Kasayı PDF Olarak İndir",
