@@ -55,6 +55,11 @@ st.markdown("""
         font-weight: bold !important;
     }
     
+    /* Input ve Widget Etiketlerini Beyaz Yapma */
+    .stNumberInput label, .stMetric label {
+        color: #ffffff !important;
+    }
+
     /* Başlıklar */
     h1, h2, h3, h4 {
         color: #ffffff !important;
@@ -75,9 +80,9 @@ st.markdown("""
         color: white;
     }
 
-    /* Metrik Alanları */
+    /* Metrik Değeri */
     [data-testid="stMetricValue"] {
-        color: #ff7b00 !important;
+        color: #ffffff !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -168,25 +173,29 @@ for i in range(0, len(df), cols_per_row):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
                     st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
                     
-                    # 1. Banka/ATM Manüel Giriş
+                    # 1. Banka/ATM Manüel Giriş (Etiket beyaz)
                     banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
                     
                     # Hesaplama: Nakit Ft. Tutarı Top + Nakit Ödeme Tutarı Topl. - BANKA/ATM
                     hesap_tutar = nakit_ft + nakit_odeme - banka_atm
+                    
+                    # HESAP (Net) gösterimi (Etiket beyaz)
                     st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                     
-                    # 2. Ödenen Manüel Giriş
+                    # 2. Ödenen Manüel Giriş (Etiket beyaz)
                     odenen_tutar = st.number_input("Ödenen (Alınan/Verilen)", min_value=0.0, value=hesap_tutar, step=10.0, key=odenen_key)
                     
-                    # Hesaplama: HESAP - Ödenen = Fazla / Eksik
-                    fazla_eksik = hesap_tutar - odenen_tutar
+                    # Mantık: Ödenen - HESAP (Net)
+                    # Ödenen > HESAP ise -> Fazla (Para üstü)
+                    # HESAP > Ödenen ise -> Eksik (Tahsil edilmeli)
+                    fark = odenen_tutar - hesap_tutar
                     
-                    if fazla_eksik > 0:
-                        st.warning(f"⚠️ Eksik: {fazla_eksik:,.2f} TL")
-                    elif fazla_eksik < 0:
-                        st.success(f"💵 Fazla/Üstü: {abs(fazla_eksik):,.2f} TL")
+                    if fark > 0:
+                        st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.1rem;'>💵 Eksik/Fazla (Fazla/Üstü): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                    elif fark < 0:
+                        st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.1rem;'>⚠️ Eksik/Fazla (Eksik): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
                     else:
-                        st.success("✅ Tamam (0.00 TL)")
+                        st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.1rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
 # Alt Özet Tablosu ve İndirme Butonu
 st.markdown("---")
@@ -201,7 +210,14 @@ for idx, row in df.iterrows():
     banka_val = st.session_state.get(f"banka_{idx}", 0.0)
     hesap = nakit_ft + nakit_odeme - banka_val
     odenen_val = st.session_state.get(f"odenen_{idx}", hesap)
-    fazla_eksik = hesap - odenen_val
+    fark_val = odenen_val - hesap
+    
+    if fark_val > 0:
+        durum_metni = f"Fazla: +{fark_val:,.2f} TL"
+    elif fark_val < 0:
+        durum_metni = f"Eksik: {fark_val:,.2f} TL"
+    else:
+        durum_metni = "Tamam (0.00 TL)"
     
     summary_data.append({
         "Personel": person_name,
@@ -210,7 +226,7 @@ for idx, row in df.iterrows():
         "Banka / ATM": banka_val,
         "HESAP": hesap,
         "Ödenen": odenen_val,
-        "Fazla / Eksik": fazla_eksik
+        "Eksik/Fazla": durum_metni
     })
 
 summary_df = pd.DataFrame(summary_data)
@@ -219,8 +235,7 @@ st.dataframe(summary_df.style.format({
     "Nakit Ödeme Top": "{:,.2f} TL",
     "Banka / ATM": "{:,.2f} TL",
     "HESAP": "{:,.2f} TL",
-    "Ödenen": "{:,.2f} TL",
-    "Fazla / Eksik": "{:,.2f} TL"
+    "Ödenen": "{:,.2f} TL"
 }), use_container_width=True)
 
 csv = summary_df.to_csv(index=False).encode('utf-8')
