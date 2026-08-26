@@ -350,9 +350,24 @@ sube_net_val = st.session_state.get('genel_net_kasa', 0.0)
 kops_val = st.session_state.get('genel_kops_kasa', 0.0)
 kasa_fark = sube_net_val - kops_val
 
+# --- KASA ÖZETİ VE UYARI ALANI (TABLONUN ÜSTÜNE TAŞINDI) ---
 st.markdown("---")
-st.markdown("### 📊 Genel Hesap Özeti Tablosu")
+st.markdown("### 📊 Genel Hesap Özeti ve Kasa Durumu")
 
+col_ozet1, col_ozet2 = st.columns(2)
+with col_ozet1:
+    st.markdown(f"### 🏦 Şube Net Kasa: **{sube_net_val:,.2f} TL**")
+with col_ozet2:
+    st.markdown(f"### 💳 KOPS KASA: **{kops_val:,.2f} TL**")
+
+if kasa_fark < 0:
+    st.markdown(f"<div style='background-color: rgba(255, 51, 51, 0.2); border: 2px solid #ff3333; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; margin-top: 10px; margin-bottom: 15px;'>⚠️ Kasa Durumu: AÇIK ({abs(kasa_fark):,.2f} TL Eksik)</div>", unsafe_allow_html=True)
+elif kasa_fark > 0:
+    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px; margin-bottom: 15px;'>💵 Kasa Durumu: FAZLA ({kasa_fark:,.2f} TL Fazla)</div>", unsafe_allow_html=True)
+else:
+    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px; margin-bottom: 15px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
+
+# --- GENEL HESAP ÖZETİ TABLOSU ---
 summary_data = []
 for idx, row in df.iterrows():
     person_name = row["Personel"]
@@ -383,19 +398,6 @@ for idx, row in df.iterrows():
 
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
-
-col_ozet1, col_ozet2 = st.columns(2)
-with col_ozet1:
-    st.markdown(f"### 🏦 Şube Net Kasa: **{sube_net_val:,.2f} TL**")
-with col_ozet2:
-    st.markdown(f"### 💳 KOPS KASA: **{kops_val:,.2f} TL**")
-
-if kasa_fark < 0:
-    st.markdown(f"<div style='background-color: rgba(255, 51, 51, 0.2); border: 2px solid #ff3333; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; margin-top: 10px;'>⚠️ Kasa Durumu: AÇIK ({abs(kasa_fark):,.2f} TL Eksik)</div>", unsafe_allow_html=True)
-elif kasa_fark > 0:
-    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>💵 Kasa Durumu: FAZLA ({kasa_fark:,.2f} TL Fazla)</div>", unsafe_allow_html=True)
-else:
-    st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
 # Türkçe karakterleri destekleyen güvenli PDF fonksiyonu (Harici modül gerektirmez)
 @st.cache_data
