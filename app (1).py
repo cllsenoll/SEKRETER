@@ -183,33 +183,35 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
-            # Sütun isimlerindeki boşlukları ve gereksiz karakterleri temizle
-            df.columns = [str(col).strip() for col in df.columns]
-            
-            # --- ÇOK ESNEK SÜTUN EŞLEŞTİRME ---
+            # Orijinal sütun adlarını koruyarak temizleme sözlüğü oluşturalım
+            original_columns = list(df.columns)
             rename_map = {}
-            for col in df.columns:
-                col_clean = col.lower().replace('.', '').replace(' ', '')
+            
+            found_personel = None
+            found_nakit_ft = None
+            found_nakit_odeme = None
+            
+            for col in original_columns:
+                col_clean = str(col).lower().replace('.', '').replace(' ', '')
                 
-                # Personel sütunu eşleşmesi
-                if any(x in col_clean for x in ["personel", "adi", "isim", "adsoyad"]):
-                    if "personel" not in rename_map.values():
-                        rename_map[col] = "Personel"
-                
-                # Nakit Ft Tutarı Top sütunu eşleşmesi
-                elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
-                    rename_map[col] = "Nakit Ft. Tutarı Top"
-                
-                # Nakit Ödeme Tutarı Topl. sütunu eşleşmesi
-                elif "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
-                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
-                
-                # KOPS Kasa sütunu eşleşmesi
+                if not found_personel and any(x in col_clean for x in ["personel", "adi", "isim", "adsoyad"]):
+                    found_personel = col
+                elif not found_nakit_ft and "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
+                    found_nakit_ft = col
+                elif not found_nakit_odeme and "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
+                    found_nakit_odeme = col
                 elif "kops" in col_clean:
                     val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
                     if not val_candidates.empty:
                         excel_kops_degeri = float(val_candidates.iloc[0])
             
+            if found_personel:
+                rename_map[found_personel] = "Personel"
+            if found_nakit_ft:
+                rename_map[found_nakit_ft] = "Nakit Ft. Tutarı Top"
+            if found_nakit_odeme:
+                rename_map[found_nakit_odeme] = "Nakit Ödeme Tutarı Topl."
+                
             if rename_map:
                 df = df.rename(columns=rename_map)
 
@@ -263,7 +265,7 @@ else:
         
         return series.apply(parse_val)
 
-    # Değerleri güvenli sayısal formata dönüştür
+    # Değerleri güvenli sayısal formata dönüştür (Güvenli atama)
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
         if col in df.columns:
             df[col] = clean_numeric_series(df[col])
