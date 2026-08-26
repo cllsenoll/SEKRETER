@@ -32,18 +32,24 @@ st.markdown("""
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
         border-radius: 14px;
-        padding: 18px;
+        padding: 16px;
         text-align: center;
         box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
         margin-bottom: 8px;
     }
     .person-name {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: bold;
         color: #ffffff;
-        margin-top: 8px;
-        margin-bottom: 5px;
+        margin-top: 6px;
+        margin-bottom: 4px;
         letter-spacing: 0.5px;
+    }
+    .person-net-tutar {
+        font-size: 1.15rem;
+        font-weight: bold;
+        color: #00ff88;
+        margin-top: 4px;
     }
 
     /* Expander ve Kutuların Görünümü */
@@ -162,10 +168,21 @@ for i in range(0, len(df), cols_per_row):
             odenen_key = f"odenen_{idx}"
             
             with cols[j]:
+                # Ön hesaplamalar (Kart üzerinde HESAP Net ve İşlem Tamam durumunu gösterebilmek için)
+                # Geçici olarak session_state değerlerini okuyoruz
+                temp_banka = st.session_state.get(banka_key, 0.0)
+                hesap_tutar = nakit_ft + nakit_odeme - temp_banka
+                
+                # Ödenen alanı girilmiş mi kontrolü (Varsayılan olarak hesap_tutar atanıyor ancak kullanıcı değiştirdiyse)
+                has_paid = odenen_key in st.session_state
+                status_text = "✔ İşlem Tamam" if has_paid else "⏳ İşlem Bekliyor"
+                status_color = "#00ff88" if has_paid else "#ffb703"
+
                 st.markdown(f"""
                 <div class="person-card">
-                    <div style="color: #ff7b00; font-size: 0.8rem; font-weight: bold; margin-bottom: 3px;">✔ İşlem Tamam</div>
+                    <div style="color: {status_color}; font-size: 0.8rem; font-weight: bold; margin-bottom: 2px;">{status_text}</div>
                     <div class="person-name">{person_name}</div>
+                    <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -173,29 +190,25 @@ for i in range(0, len(df), cols_per_row):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
                     st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
                     
-                    # 1. Banka/ATM Manüel Giriş (Etiket beyaz)
+                    # 1. Banka/ATM Manüel Giriş
                     banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
                     
-                    # Hesaplama: Nakit Ft. Tutarı Top + Nakit Ödeme Tutarı Topl. - BANKA/ATM
+                    # Güncel Hesaplama
                     hesap_tutar = nakit_ft + nakit_odeme - banka_atm
-                    
-                    # HESAP (Net) gösterimi (Etiket beyaz)
                     st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                     
-                    # 2. Ödenen Manüel Giriş (Etiket beyaz)
+                    # 2. Ödenen Manüel Giriş
                     odenen_tutar = st.number_input("Ödenen (Alınan/Verilen)", min_value=0.0, value=hesap_tutar, step=10.0, key=odenen_key)
                     
                     # Mantık: Ödenen - HESAP (Net)
-                    # Ödenen > HESAP ise -> Fazla (Para üstü)
-                    # HESAP > Ödenen ise -> Eksik (Tahsil edilmeli)
                     fark = odenen_tutar - hesap_tutar
                     
                     if fark > 0:
-                        st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.1rem;'>💵 Eksik/Fazla (Fazla/Üstü): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>💵 Eksik/Fazla (Fazla/Üstü): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
                     elif fark < 0:
-                        st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.1rem;'>⚠️ Eksik/Fazla (Eksik): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.05rem;'>⚠️ Eksik/Fazla (Eksik): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
                     else:
-                        st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.1rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
+                        st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
 # Alt Özet Tablosu ve İndirme Butonu
 st.markdown("---")
