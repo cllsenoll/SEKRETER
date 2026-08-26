@@ -190,7 +190,7 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub SEKRETER deposundan profil resmi URL'si oluşturan fonksiyon (PNG formatında)
+# GitHub SEKRETER deposundan PNG uzantılı profil resmi URL'si oluşturan fonksiyon
 def get_profile_image_url(person_name):
     formatted_name = (
         person_name.strip()
@@ -210,10 +210,10 @@ def get_profile_image_url(person_name):
         .replace("ı", "i")
         .replace(" ", "_")
     )
-    # KULLANICI_ADI kısmını kendi GitHub kullanıcı adınız veya depo yolunuzla güncelleyebilirsiniz.
-    return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.png"
+    # KULLANICI_ADINIZ kısmını kendi GitHub kullanıcı adınızla değiştirmelisiniz.
+    return f"https://raw.githubusercontent.com/KULLANICI_ADINIZ/SEKRETER/main/{formatted_name}.png"
 
-# Güvenli SVG Varsayılan Kullanıcı Avatarı
+# Görsel yüklenemediğinde çalışacak varsayılan yedek avatar
 DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
 # 4'lü Kolon yapısıyla kartları listeleme
@@ -245,10 +245,10 @@ for i in range(0, len(df), cols_per_row):
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                # GitHub SEKRETER deposundan PNG profil resmi URL'si
+                # GitHub PNG profil resmi URL'si
                 avatar_url = get_profile_image_url(person_name)
 
-                # HTML kart yapısı (PNG resim destekli ve onerror yedekli)
+                # HTML kart yapısı (onerror ile resim bulunamazsa varsayılan avatarı gösterir)
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
@@ -358,10 +358,8 @@ def generate_pdf(data_frame):
     elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
     elements.append(Spacer(1, 10))
     
-    # Tablo verilerini hazırlama
     table_data = [list(data_frame.columns)] + data_frame.values.tolist()
     
-    # Tablo boyutlandırma ve biçimlendirme
     t = Table(table_data, colWidths=[105, 75, 75, 65, 65, 65, 65])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
