@@ -189,14 +189,20 @@ if uploaded_file is not None:
         if df is not None:
             df.columns = df.columns.astype(str).str.strip()
             
-            # Sütun adı eşleştirme (Personel Adı -> Personel)
+            # Sütun adı eşleştirme (Esnek Algılama)
             rename_map = {}
             for col in df.columns:
-                col_lower = col.lower()
-                if "personel" in col_lower and "adı" in col_lower:
+                col_clean = col.lower().replace('.', '').replace(' ', '')
+                
+                # Personel adı sütunu
+                if ("personel" in col_clean and "adı" in col_clean) or col_clean == "personel":
                     rename_map[col] = "Personel"
-                elif col_lower == "personel":
-                    rename_map[col] = "Personel"
+                # Nakit Fatura Tutarı sütunu
+                elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
+                    rename_map[col] = "Nakit Ft. Tutarı Top"
+                # Nakit Ödeme Tutarı sütunu ("nakit ödeme tutarı topl" ve türevleri)
+                elif "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
+                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
             if rename_map:
                 df = df.rename(columns=rename_map)
@@ -232,32 +238,24 @@ else:
     # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         if series.dtype == object or series.dtype == str:
-            # Metin içindeki boşlukları, TL simgelerini temizle
             cleaned = series.astype(str).str.strip()
             cleaned = cleaned.str.replace('TL', '', case=False, regex=False)
             cleaned = cleaned.str.replace('₺', '', regex=False)
             cleaned = cleaned.str.replace(' ', '', regex=False)
             
-            # Eğer hem nokta hem virgül varsa (örn: 1.250,50), noktayı binlik ayraç sil, virgülü noktaya çevir
-            # Sadece virgül varsa ondalıktır noktaya çevir
-            # Sadece nokta varsa (örn: 1250.50) olduğu gibi bırakabiliriz
             def parse_val(val):
-                if val == '' or val.lower() == 'nan' or val == 'None':
+                if val == '' or str(val).lower() == 'nan' or str(val).lower() == 'none':
                     return 0.0
                 try:
-                    # Nokta ve virgül durum analizi
-                    if ',' in val and '.' in val:
-                        # Hangisi daha sonda?
-                        if val.rfind(',') > val.rfind('.'):
-                            # Avrupa formatı: 1.250,50 -> nokta binlik, virgül ondalık
-                            val = val.replace('.', '').replace(',', '.')
+                    val_str = str(val)
+                    if ',' in val_str and '.' in val_str:
+                        if val_str.rfind(',') > val_str.rfind('.'):
+                            val_str = val_str.replace('.', '').replace(',', '.')
                         else:
-                            # Amerikan formatı: 1,250.50 -> virgül binlik, nokta ondalık
-                            val = val.replace(',', '')
-                    elif ',' in val:
-                        # Sadece virgül varsa ondalık kabul et: 1250,50 -> 1250.50
-                        val = val.replace(',', '.')
-                    return float(val)
+                            val_str = val_str.replace(',', '')
+                    elif ',' in val_str:
+                        val_str = val_str.replace(',', '.')
+                    return float(val_str)
                 except:
                     return 0.0
             
