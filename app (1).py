@@ -115,18 +115,18 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* Input ve Widget Etiketlerini Beyaz Yapma */
+    /* Input and Widget Label Text White */
     .stNumberInput label, .stMetric label, .stTextInput label {
         color: #ffffff !important;
     }
 
-    /* Başlıklar */
+    /* Titles */
     h1, h2, h3, h4 {
         color: #ffffff !important;
         text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
-    /* Turuncu Vurgulu Butonlar */
+    /* Orange Accent Buttons */
     .stButton>button {
         background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
         color: white;
@@ -140,7 +140,6 @@ st.markdown("""
         color: white;
     }
 
-    /* Metrik Değeri */
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
     }
@@ -186,28 +185,37 @@ def load_sample_data():
     }
     return pd.DataFrame(data)
 
-# Dosya yükleme kontrolü
+# Dosya yükleme kontrolü ve veri okuma
+df = None
 if uploaded_file is not None:
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
+        
+        # Sütun adlarındaki olası boşlukları temizle
+        df.columns = df.columns.astype(str).str.strip()
         st.sidebar.success("Excel dosyası başarıyla yüklendi!")
     except Exception as e:
         st.sidebar.error(f"Dosya okuma hatası: {e}")
-        df = load_sample_data()
-else:
+        df = None
+
+if df is None:
     df = load_sample_data()
     st.info("💡 Bilgi: Kendi 'HESAP' Excel dosyanızı yüklemediğiniz sürece örnek veriler gösterilmektedir.")
 
-# Gerekli sütun kontrolü
+# Gerekli sütun kontrolü ve esnek eşleştirme
 required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
 missing_cols = [col for col in required_cols if col not in df.columns]
 
 if missing_cols:
-    st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
+    st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}. Lütfen sütun adlarını kontrol edin.")
     st.stop()
+
+# Sayısal sütunların tipini güvence altına al
+df["Nakit Ft. Tutarı Top"] = pd.to_numeric(df["Nakit Ft. Tutarı Top"], errors='coerce').fillna(0.0)
+df["Nakit Ödeme Tutarı Topl."] = pd.to_numeric(df["Nakit Ödeme Tutarı Topl."], errors='coerce').fillna(0.0)
 
 def get_profile_image_url(person_name, g_user):
     clean_name = person_name.strip()
@@ -224,7 +232,7 @@ for i in range(0, len(df), cols_per_row):
         idx = i + j
         if idx < len(df):
             row = df.iloc[idx]
-            person_name = row["Personel"]
+            person_name = str(row["Personel"])
             nakit_ft = float(row["Nakit Ft. Tutarı Top"])
             nakit_odeme = float(row["Nakit Ödeme Tutarı Topl."])
             
@@ -275,7 +283,7 @@ for i in range(0, len(df), cols_per_row):
                     odenen_tutar = st.number_input(
                         "Ödenen (Alınan/Verilen)", 
                         min_value=0.0, 
-                        value=st.session_state[odenen_key], 
+                        value=float(st.session_state[odenen_key]), 
                         step=10.0, 
                         key=odenen_key,
                         on_change=mark_completed
@@ -330,7 +338,7 @@ with st.container():
         net_kasa_giris = st.number_input(
             "📥 Şube Net Kasa Değeri", 
             min_value=0.0, 
-            value=st.session_state["genel_net_kasa"], 
+            value=float(st.session_state["genel_net_kasa"]), 
             step=10.0, 
             key="genel_net_kasa"
         )
@@ -339,18 +347,18 @@ with st.container():
         kops_kasa_giris = st.number_input(
             "📥 KOPS KASA", 
             min_value=0.0, 
-            value=st.session_state.get("genel_kops_kasa", 0.0), 
+            value=float(st.session_state.get("genel_kops_kasa", 0.0)), 
             step=10.0, 
             key="genel_kops_kasa"
         )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-sube_net_val = st.session_state.get('genel_net_kasa', 0.0)
-kops_val = st.session_state.get('genel_kops_kasa', 0.0)
+sube_net_val = float(st.session_state.get('genel_net_kasa', 0.0))
+kops_val = float(st.session_state.get('genel_kops_kasa', 0.0))
 kasa_fark = sube_net_val - kops_val
 
-# --- KASA ÖZETİ VE UYARI ALANI (TABLONUN ÜSTÜNE TAŞINDI) ---
+# --- KASA ÖZETİ VE UYARI ALANI ---
 st.markdown("---")
 st.markdown("### 📊 Genel Hesap Özeti ve Kasa Durumu")
 
@@ -370,7 +378,7 @@ else:
 # --- GENEL HESAP ÖZETİ TABLOSU ---
 summary_data = []
 for idx, row in df.iterrows():
-    person_name = row["Personel"]
+    person_name = str(row["Personel"])
     nakit_ft = float(row["Nakit Ft. Tutarı Top"])
     nakit_odeme = float(row["Nakit Ödeme Tutarı Topl."])
     
@@ -399,7 +407,7 @@ for idx, row in df.iterrows():
 summary_df = pd.DataFrame(summary_data)
 st.dataframe(summary_df, use_container_width=True)
 
-# Türkçe karakterleri destekleyen güvenli PDF fonksiyonu (Harici modül gerektirmez)
+# Türkçe karakterleri destekleyen güvenli PDF fonksiyonu
 @st.cache_data
 def get_dejavu_font():
     font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
