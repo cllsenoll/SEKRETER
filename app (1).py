@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import io
 import urllib.parse
+import urllib.request
 import os
-import matplotlib
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
@@ -323,7 +323,6 @@ with st.container():
     else:
         st.session_state["genel_net_kasa"] = float(toplam_sayilan_kasa)
 
-    # İki kutucuk eşit boyutta ve daha küçük görünüm için yan yana kolonlar
     st.markdown("<br>", unsafe_allow_html=True)
     k_col1, k_col2 = st.columns(2)
     
@@ -398,23 +397,40 @@ elif kasa_fark > 0:
 else:
     st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
-# Matplotlib içindeki yerleşik DejaVu fontlarını kullanarak Türkçe karakter hatasını kesin olarak çözen PDF fonksiyonu
+# Türkçe karakterleri destekleyen güvenli PDF fonksiyonu (Harici modül gerektirmez)
+@st.cache_data
+def get_dejavu_font():
+    font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+    font_bold_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
+    
+    local_font = "DejaVuSans.ttf"
+    local_bold = "DejaVuSans-Bold.ttf"
+    
+    try:
+        if not os.path.exists(local_font):
+            urllib.request.urlretrieve(font_url, local_font)
+        if not os.path.exists(local_bold):
+            urllib.request.urlretrieve(font_bold_url, local_bold)
+        return local_font, local_bold
+    except Exception:
+        return None, None
+
 def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
-    # Matplotlib veri dizininden DejaVuSans ttf dosyalarını güvenle alıyoruz
-    mpl_data_path = matplotlib.get_data_path()
-    font_path = os.path.join(mpl_data_path, 'fonts', 'ttf', 'DejaVuSans.ttf')
-    font_bold_path = os.path.join(mpl_data_path, 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
-    
-    try:
-        pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', font_bold_path))
-        font_name = 'DejaVuSans'
-        font_bold = 'DejaVuSans-Bold'
-    except Exception:
+    f_path, f_bold_path = get_dejavu_font()
+    if f_path and f_bold_path:
+        try:
+            pdfmetrics.registerFont(TTFont('DejaVuSans', f_path))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', f_bold_path))
+            font_name = 'DejaVuSans'
+            font_bold = 'DejaVuSans-Bold'
+        except Exception:
+            font_name = 'Helvetica'
+            font_bold = 'Helvetica-Bold'
+    else:
         font_name = 'Helvetica'
         font_bold = 'Helvetica-Bold'
     
