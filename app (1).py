@@ -22,13 +22,10 @@ st.set_page_config(
 # Gelişmiş Canlı Mavi ve Turuncu Tema CSS Kodları
 st.markdown("""
     <style>
-    /* Ana Ekran Arka Planı (Canlı Mavi Gradyan) */
     .stApp {
         background: linear-gradient(135deg, #102a43 0%, #243b55 50%, #1f4068 100%);
         color: #ffffff;
     }
-    
-    /* Sol Kenar Çubuğu (Sidebar) Arka Planı */
     [data-testid="stSidebar"] {
         background-color: #1a365d;
         border-right: 2px solid #ff7b00;
@@ -36,8 +33,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #ffffff !important;
     }
-
-    /* SADECE Excel/CSV Yükleme Kutusu (Dropzone) Turuncu Renk Tonunda */
     [data-testid="stFileUploaderDropzone"] {
         background: linear-gradient(135deg, #ff7b00 0%, #d97706 100%) !important;
         border: 2px dashed #ffffff !important;
@@ -52,8 +47,6 @@ st.markdown("""
         border-radius: 6px !important;
         font-weight: bold !important;
     }
-
-    /* Personel Kartları Tasarımı */
     .person-card {
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
@@ -94,8 +87,6 @@ st.markdown("""
         font-weight: bold;
         color: #00ff88;
     }
-
-    /* Genel Kasa Paneli Tasarımı */
     .kasa-panel {
         background: linear-gradient(145deg, #1e3a8a, #0f172a);
         border: 2px solid #ff7b00;
@@ -105,8 +96,6 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 25px;
     }
-
-    /* Expander ve Kutuların Görünümü */
     .streamlit-expanderHeader {
         background-color: #1e3a8a !important;
         color: #ff7b00 !important;
@@ -114,16 +103,13 @@ st.markdown("""
         border-radius: 8px !important;
         font-weight: bold !important;
     }
-    
     .stNumberInput label, .stMetric label, .stTextInput label {
         color: #ffffff !important;
     }
-
     h1, h2, h3, h4 {
         color: #ffffff !important;
         text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-
     .stButton>button {
         background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
         color: white;
@@ -136,14 +122,13 @@ st.markdown("""
         background: linear-gradient(90deg, #ff9e00 0%, #ffb703 100%);
         color: white;
     }
-
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Kenar Çubuğu (Sidebar)
+# Kenar Çubuğu
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/money-bag.png", width=60)
     st.markdown("### F4 / HESAP")
@@ -169,51 +154,76 @@ st.markdown("# 💰 Günlük Personel Hesap ve Kasa Takibi")
 st.markdown("#### Personel Durum Kartları")
 st.markdown("---")
 
-# Dosya yükleme kontrolü ve akıllı format algılama
 df = None
 excel_kops_degeri = None
 
 if uploaded_file is not None:
     try:
         file_name_lower = uploaded_file.name.lower()
+        
         if file_name_lower.endswith('.csv'):
-            # Türkçe karakterler ve yaygın CSV ayraçları için deneme
-            try:
-                df = pd.read_csv(uploaded_file, encoding='utf-8')
-            except UnicodeDecodeError:
-                uploaded_file.seek(0)
-                df = pd.read_csv(uploaded_file, encoding='latin5')
+            file_bytes = uploaded_file.getvalue()
+            
+            # Akıllı CSV tarayıcı: Türkiye standartlarındaki olası tüm kombinasyonları dener
+            csv_configs = [
+                {'sep': ';', 'encoding': 'cp1254'}, # Türk tarzı Excel (En yaygın)
+                {'sep': ';', 'encoding': 'utf-8'},
+                {'sep': ',', 'encoding': 'utf-8'},  # Standart evrensel CSV
+                {'sep': ',', 'encoding': 'cp1254'}
+            ]
+            
+            for config in csv_configs:
+                try:
+                    temp_df = pd.read_csv(io.BytesIO(file_bytes), sep=config['sep'], encoding=config['encoding'])
+                    # Eğer sütunlar tek bir satıra sıkışmadıysa doğru okumuştur
+                    if len(temp_df.columns) > 1:
+                        df = temp_df
+                        break
+                except Exception:
+                    continue
+            
+            # Eğer hala df boşsa, standart yöntemle tekrar zorla
+            if df is None:
+                df = pd.read_csv(io.BytesIO(file_bytes), sep=None, engine='python')
+                
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Sütun adlarındaki olası boşlukları temizle
-        df.columns = df.columns.astype(str).str.strip()
-        
-        # Eğer dosyada KOPS Kasa verisi varsa yakala
-        for col in df.columns:
-            if "kops" in col.lower():
-                val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
-                if not val_candidates.empty:
-                    excel_kops_degeri = float(val_candidates.iloc[0])
+        # Sütun adlarındaki ekstra boşlukları temizle
+        if df is not None:
+            df.columns = df.columns.astype(str).str.strip()
+            
+            for col in df.columns:
+                if "kops" in col.lower():
+                    val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
+                    if not val_candidates.empty:
+                        excel_kops_degeri = float(val_candidates.iloc[0])
 
-        st.sidebar.success("Dosya başarıyla yüklendi ve okundu!")
+            st.sidebar.success("Dosya başarıyla yüklendi ve tarandı!")
+            
     except Exception as e:
-        st.sidebar.error(f"Dosya okuma hatası: {e}")
+        st.sidebar.error(f"Kritik Dosya Okuma Hatası: {e}")
         df = None
 
-# Dosya yüklenmediyse ekran tamamen boş kalır
+# Dosya yüklenmemişse uyarı verip bekliyoruz
 if df is None:
     st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
-    # Gerekli sütun kontrolü
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
+    # HATA AYIKLAMA (SAYFA BOŞ KALMASIN DİYE EKLENDİ)
     if missing_cols:
-        st.error(f"Yüklenen dosyada eksik sütunlar var: {missing_cols}. Lütfen sütun adlarını kontrol edin.")
+        st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
+        st.warning(f"🧐 **Dosyanızdan Çekebildiğimiz Sütunlar Şunlar:** {list(df.columns)}")
+        st.info("Lütfen dosyanızdaki sütun başlıklarının harfi harfine doğru olduğundan ve dosyanın hatalı dışa aktarılmadığından emin olun.")
         st.stop()
 
-    # Sayısal sütunların tipini güvence altına al (Virgül/Nokta ondalık dönüşümleri dahil)
+    if len(df) == 0:
+        st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
+        st.stop()
+
+    # Sayısal sütunların formatlarını düzelt (1.000,50 tarzı sayıları düzeltir)
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
         if df[col].dtype == object:
             df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
@@ -226,7 +236,7 @@ else:
 
     DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
-    # 4'lü Kolon yapısıyla kartları listeleme
+    # Kart Listeleme Başlıyor
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
         cols = st.columns(cols_per_row)
@@ -409,20 +419,16 @@ else:
     summary_df = pd.DataFrame(summary_data)
     st.dataframe(summary_df, use_container_width=True)
 
-    # Türkçe karakterleri destekleyen güvenli PDF fonksiyonu
+    # PDF FONKSİYONU
     @st.cache_data
     def get_dejavu_font():
         font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
         font_bold_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
-        
         local_font = "DejaVuSans.ttf"
         local_bold = "DejaVuSans-Bold.ttf"
-        
         try:
-            if not os.path.exists(local_font):
-                urllib.request.urlretrieve(font_url, local_font)
-            if not os.path.exists(local_bold):
-                urllib.request.urlretrieve(font_bold_url, local_bold)
+            if not os.path.exists(local_font): urllib.request.urlretrieve(font_url, local_font)
+            if not os.path.exists(local_bold): urllib.request.urlretrieve(font_bold_url, local_bold)
             return local_font, local_bold
         except Exception:
             return None, None
@@ -437,42 +443,21 @@ else:
             try:
                 pdfmetrics.registerFont(TTFont('DejaVuSans', f_path))
                 pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', f_bold_path))
-                font_name = 'DejaVuSans'
-                font_bold = 'DejaVuSans-Bold'
-            except Exception:
-                font_name = 'Helvetica'
-                font_bold = 'Helvetica-Bold'
+                font_name, font_bold = 'DejaVuSans', 'DejaVuSans-Bold'
+            except:
+                font_name, font_bold = 'Helvetica', 'Helvetica-Bold'
         else:
-            font_name = 'Helvetica'
-            font_bold = 'Helvetica-Bold'
+            font_name, font_bold = 'Helvetica', 'Helvetica-Bold'
         
         styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            parent=styles['Heading1'],
-            fontName=font_bold,
-            fontSize=18,
-            textColor=colors.HexColor('#1e3a8a'),
-            alignment=1,
-            spaceAfter=6
-        )
-        
-        subtitle_style = ParagraphStyle(
-            'SubTitleStyle',
-            parent=styles['Normal'],
-            fontName=font_bold,
-            fontSize=10,
-            textColor=colors.HexColor('#d97706'),
-            alignment=1,
-            spaceAfter=15
-        )
+        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName=font_bold, fontSize=18, textColor=colors.HexColor('#1e3a8a'), alignment=1, spaceAfter=6)
+        subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontName=font_bold, fontSize=10, textColor=colors.HexColor('#d97706'), alignment=1, spaceAfter=15)
         
         elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
         elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
         elements.append(Spacer(1, 10))
         
         table_data = [list(data_frame.columns)] + data_frame.values.tolist()
-        
         t = Table(table_data, colWidths=[150, 95, 95, 85, 85, 85, 115])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
@@ -494,12 +479,9 @@ else:
         buffer.seek(0)
         return buffer.getvalue()
 
-    if kasa_fark < 0:
-        durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
-    elif kasa_fark > 0:
-        durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
-    else:
-        durum_str = "TAMAM"
+    if kasa_fark < 0: durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
+    elif kasa_fark > 0: durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
+    else: durum_str = "TAMAM"
 
     pdf_bytes = generate_pdf(summary_df, sube_net_val, kops_val, durum_str)
 
