@@ -55,7 +55,7 @@ st.markdown("""
         text-align: left;
     }
     .person-name {
-        font-size: 0.95rem;
+        font-size: 0.90rem;
         font-weight: bold;
         color: #ffffff;
         margin-bottom: 2px;
@@ -167,6 +167,32 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
+# GitHub SEKRETER deposundan profil resmi eşleştirme fonksiyonu
+def get_profile_image_url(person_name):
+    # Türkçe karakterleri ve boşlukları GitHub dosya adına uygun formata dönüştürme
+    formatted_name = (
+        person_name.strip()
+        .lower()
+        .replace("İ", "i")
+        .replace("I", "ı")
+        .replace("Ğ", "g")
+        .replace("Ü", "u")
+        .replace("Ş", "s")
+        .replace("Ö", "o")
+        .replace("Ç", "c")
+        .replace("ş", "s")
+        .replace("ğ", "g")
+        .replace("ü", "u")
+        .replace("ö", "o")
+        .replace("ç", "c")
+        .replace("ı", "i")
+        .replace(" ", "_")
+    )
+    # GitHub SEKRETER deposundaki raw dosya yolu (Kullanıcı adı/depo adını kendi repository bilgilerinizle güncelleyebilirsiniz)
+    # Örnek yapı: https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/fotolar/ADI_SOYADI.jpg
+    # Varsayılan olarak standart raw link şablonunu bırakıyoruz:
+    return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.jpg"
+
 # 4'lü Kolon yapısıyla kartları listeleme
 cols_per_row = 4
 for i in range(0, len(df), cols_per_row):
@@ -181,27 +207,30 @@ for i in range(0, len(df), cols_per_row):
             
             banka_key = f"banka_{idx}"
             odenen_key = f"odenen_{idx}"
+            completed_key = f"completed_{idx}"
             
             with cols[j]:
                 # Ön hesaplamalar
                 temp_banka = st.session_state.get(banka_key, 0.0)
                 hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                 
-                # "Ödenen" alanı doldurulmuş mu kontrolü
-                has_paid = odenen_key in st.session_state
+                # "İşlem Tamam" ibaresi yalnızca kullanıcı ödenen alanına veri kaydettiyse görünür
+                is_completed = st.session_state.get(completed_key, False)
                 
-                if has_paid:
+                if is_completed:
                     status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
                 else:
                     status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                avatar_url = "https://img.icons8.com/color/96/user-male-circle--v1.png"
+                # GitHub SEKRETER deposundan eşleşen profil resmi
+                avatar_url = get_profile_image_url(person_name)
+                fallback_avatar = "https://img.icons8.com/color/96/user-male-circle--v1.png"
 
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
                     <div class="card-content">
-                        <img src="{avatar_url}" class="profile-img">
+                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{fallback_avatar}';" class="profile-img">
                         <div class="person-info">
                             <div class="person-name">{person_name}</div>
                             <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
@@ -221,9 +250,27 @@ for i in range(0, len(df), cols_per_row):
                     hesap_tutar = nakit_ft + nakit_odeme - banka_atm
                     st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                     
+                    # Callback fonksiyonu ile ödenen alanının girildiğini işaretleme
+                    def mark_completed(k=completed_key):
+                        st.session_state[k] = True
+
                     # 2. Ödenen Manüel Giriş
-                    odenen_tutar = st.number_input("Ödenen (Alınan/Verilen)", min_value=0.0, value=hesap_tutar, step=10.0, key=odenen_key)
+                    if odenen_key not in st.session_state:
+                        st.session_state[odenen_key] = hesap_tutar
+
+                    odenen_tutar = st.number_input(
+                        "Ödenen (Alınan/Verilen)", 
+                        min_value=0.0, 
+                        value=st.session_state[odenen_key], 
+                        step=10.0, 
+                        key=odenen_key,
+                        on_change=mark_completed
+                    )
                     
+                    # Eğer kullanıcı input kutusunda değişiklik yaptıysa doğrudan tamamlandı olarak işaretle
+                    if st.session_state.get(odenen_key) != hesap_tutar:
+                        st.session_state[completed_key] = True
+
                     # Mantık: Ödenen - HESAP (Net)
                     fark = odenen_tutar - hesap_tutar
                     
