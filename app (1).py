@@ -232,30 +232,21 @@ else:
     # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         if series.dtype == object or series.dtype == str:
-            # Metin içindeki boşlukları, TL simgelerini temizle
             cleaned = series.astype(str).str.strip()
             cleaned = cleaned.str.replace('TL', '', case=False, regex=False)
             cleaned = cleaned.str.replace('₺', '', regex=False)
             cleaned = cleaned.str.replace(' ', '', regex=False)
             
-            # Eğer hem nokta hem virgül varsa (örn: 1.250,50), noktayı binlik ayraç sil, virgülü noktaya çevir
-            # Sadece virgül varsa ondalıktır noktaya çevir
-            # Sadece nokta varsa (örn: 1250.50) olduğu gibi bırakabiliriz
             def parse_val(val):
                 if val == '' or val.lower() == 'nan' or val == 'None':
                     return 0.0
                 try:
-                    # Nokta ve virgül durum analizi
                     if ',' in val and '.' in val:
-                        # Hangisi daha sonda?
                         if val.rfind(',') > val.rfind('.'):
-                            # Avrupa formatı: 1.250,50 -> nokta binlik, virgül ondalık
                             val = val.replace('.', '').replace(',', '.')
                         else:
-                            # Amerikan formatı: 1,250.50 -> virgül binlik, nokta ondalık
                             val = val.replace(',', '')
                     elif ',' in val:
-                        # Sadece virgül varsa ondalık kabul et: 1250,50 -> 1250.50
                         val = val.replace(',', '.')
                     return float(val)
                 except:
@@ -319,7 +310,7 @@ else:
                     
                     with st.expander(f"⚙️ {person_name} - İşlem", expanded=False):
                         st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
-                        st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
+                        st.write(f"**Nakit Ödeme Tutarı Topl.:** {nakit_odeme:,.2f} TL")
                         
                         banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
                         
