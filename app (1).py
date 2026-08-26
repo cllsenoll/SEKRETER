@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Gelişmiş Canlı Mavi و Turuncu Tema CSS Kodları
+# Gelişmiş Canlı Mavi ve Turuncu Tema CSS Kodları
 st.markdown("""
     <style>
     /* Ana Ekran Arka Planı (Canlı Mavi Gradyan) */
@@ -32,16 +32,32 @@ st.markdown("""
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
         border-radius: 14px;
-        padding: 14px;
+        padding: 16px;
         text-align: center;
         box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
         margin-bottom: 8px;
+    }
+    .card-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 6px;
+    }
+    .profile-img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ff7b00;
+    }
+    .person-info {
+        text-align: left;
     }
     .person-name {
         font-size: 0.90rem;
         font-weight: bold;
         color: #ffffff;
-        margin-top: 4px;
         margin-bottom: 2px;
         letter-spacing: 0.3px;
     }
@@ -151,8 +167,9 @@ if missing_cols:
     st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
     st.stop()
 
-# GitHub SEKRETER deposundan profil resmi URL'si oluşturan fonksiyon
+# GitHub SEKRETER deposundan profil resmi eşleştirme fonksiyonu
 def get_profile_image_url(person_name):
+    # Türkçe karakterleri ve boşlukları GitHub dosya adına uygun formata dönüştürme
     formatted_name = (
         person_name.strip()
         .lower()
@@ -171,7 +188,9 @@ def get_profile_image_url(person_name):
         .replace("ı", "i")
         .replace(" ", "_")
     )
-    # GitHub SEKRETER deposu raw bağlantısı (Kullanıcı adınızı buraya yazabilirsiniz, örn: kagan/SEKRETER veya şirket adı)
+    # GitHub SEKRETER deposundaki raw dosya yolu (Kullanıcı adı/depo adını kendi repository bilgilerinizle güncelleyebilirsiniz)
+    # Örnek yapı: https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/fotolar/ADI_SOYADI.jpg
+    # Varsayılan olarak standart raw link şablonunu bırakıyoruz:
     return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.jpg"
 
 # 4'lü Kolon yapısıyla kartları listeleme
@@ -195,36 +214,30 @@ for i in range(0, len(df), cols_per_row):
                 temp_banka = st.session_state.get(banka_key, 0.0)
                 hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                 
-                # "İşlem Tamam" ibaresi yalnızca kullanıcı ödenen alanını değiştirdiyse görünür
+                # "İşlem Tamam" ibaresi yalnızca kullanıcı ödenen alanına veri kaydettiyse görünür
                 is_completed = st.session_state.get(completed_key, False)
                 
-                # Kart kutusu arayüzü
-                with st.container():
-                    st.markdown(f"""
-                    <div class="person-card">
-                    """, unsafe_allow_html=True)
-                    
-                    if is_completed:
-                        st.markdown('<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>', unsafe_allow_html=True)
-                    
-                    # Profil resmi ve isim yan yana sütunlar ile
-                    img_col, info_col = st.columns([1, 2.2])
-                    with img_col:
-                        avatar_url = get_profile_image_url(person_name)
-                        try:
-                            st.image(avatar_url, width=50)
-                        except Exception:
-                            st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=50)
-                    
-                    with info_col:
-                        st.markdown(f"""
-                        <div class="person-name">{person_name}</div>
-                        <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
-                        """, unsafe_allow_html=True)
-                        
-                    st.markdown("</div>", unsafe_allow_html=True)
+                if is_completed:
+                    status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
+                else:
+                    status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
+
+                # GitHub SEKRETER deposundan eşleşen profil resmi
+                avatar_url = get_profile_image_url(person_name)
+                fallback_avatar = "https://img.icons8.com/color/96/user-male-circle--v1.png"
+
+                st.markdown(f"""
+                <div class="person-card">
+                    {status_html}
+                    <div class="card-content">
+                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{fallback_avatar}';" class="profile-img">
+                        <div class="person-info">
+                            <div class="person-name">{person_name}</div>
+                            <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 with st.expander(f"⚙️ {person_name} - İşlem", expanded=False):
                     st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
@@ -237,6 +250,7 @@ for i in range(0, len(df), cols_per_row):
                     hesap_tutar = nakit_ft + nakit_odeme - banka_atm
                     st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                     
+                    # Callback fonksiyonu ile ödenen alanının girildiğini işaretleme
                     def mark_completed(k=completed_key):
                         st.session_state[k] = True
 
@@ -253,6 +267,7 @@ for i in range(0, len(df), cols_per_row):
                         on_change=mark_completed
                     )
                     
+                    # Eğer kullanıcı input kutusunda değişiklik yaptıysa doğrudan tamamlandı olarak işaretle
                     if st.session_state.get(odenen_key) != hesap_tutar:
                         st.session_state[completed_key] = True
 
