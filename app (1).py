@@ -210,7 +210,7 @@ def get_profile_image_url(person_name):
         .replace("ı", "i")
         .replace(" ", "_")
     )
-    # KULLANICI_ADINIZ kısmını kendi GitHub kullanıcı adınızla değiştirmelisiniz.
+    # ⚠️ ÖNEMLİ: Aşağıdaki 'KULLANICI_ADINIZ' kısmını kendi gerçek GitHub kullanıcı adınızla değiştirmelisiniz!
     return f"https://raw.githubusercontent.com/KULLANICI_ADINIZ/SEKRETER/main/{formatted_name}.png"
 
 # Görsel yüklenemediğinde çalışacak varsayılan yedek avatar
@@ -248,12 +248,12 @@ for i in range(0, len(df), cols_per_row):
                 # GitHub PNG profil resmi URL'si
                 avatar_url = get_profile_image_url(person_name)
 
-                # HTML kart yapısı (onerror ile resim bulunamazsa varsayılan avatarı gösterir)
+                # HTML kart yapısı (alt parametresi kaldırıldı, isim sızması önlendi)
                 st.markdown(f"""
                 <div class="person-card">
                     {status_html}
                     <div class="card-content">
-                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{DEFAULT_AVATAR}';" class="profile-img" alt="{person_name}">
+                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{DEFAULT_AVATAR}';" class="profile-img">
                         <div class="person-info">
                             <div class="person-name">{person_name}</div>
                             <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
