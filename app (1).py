@@ -189,20 +189,14 @@ if uploaded_file is not None:
         if df is not None:
             df.columns = df.columns.astype(str).str.strip()
             
-            # Sütun adı eşleştirme (Esnek Algılama)
+            # Sütun adı eşleştirme (Personel Adı -> Personel)
             rename_map = {}
             for col in df.columns:
-                col_clean = col.lower().replace('.', '').replace(' ', '')
-                
-                # Personel adı sütunu
-                if ("personel" in col_clean and "adı" in col_clean) or col_clean == "personel":
+                col_lower = col.lower()
+                if "personel" in col_lower and "adı" in col_lower:
                     rename_map[col] = "Personel"
-                # Nakit Fatura Tutarı sütunu
-                elif "nakit" in col_clean and ("ft" in col_clean or "fatura" in col_clean):
-                    rename_map[col] = "Nakit Ft. Tutarı Top"
-                # Nakit Ödeme Tutarı sütunu
-                elif "nakit" in col_clean and ("odeme" in col_clean or "odm" in col_clean):
-                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
+                elif col_lower == "personel":
+                    rename_map[col] = "Personel"
             
             if rename_map:
                 df = df.rename(columns=rename_map)
@@ -235,28 +229,41 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # --- KESİN ÇÖZÜM: GÜNCELLENMİŞ AKILLI SAYI TEMİZLEME FONKSİYONU ---
+    # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
-        def parse_val(val):
-            if val is None or pd.isna(val):
-                return 0.0
-            val_str = str(val).strip()
-            if val_str == '' or val_str.lower() == 'nan' or val_str.lower() == 'none':
-                return 0.0
-            try:
-                val_str = val_str.replace('TL', '').replace('₺', '').replace(' ', '')
-                if ',' in val_str and '.' in val_str:
-                    if val_str.rfind(',') > val_str.rfind('.'):
-                        val_str = val_str.replace('.', '').replace(',', '.')
-                    else:
-                        val_str = val_str.replace(',', '')
-                elif ',' in val_str:
-                    val_str = val_str.replace(',', '.')
-                return float(val_str)
-            except:
-                return 0.0
-        
-        return series.apply(parse_val)
+        if series.dtype == object or series.dtype == str:
+            # Metin içindeki boşlukları, TL simgelerini temizle
+            cleaned = series.astype(str).str.strip()
+            cleaned = cleaned.str.replace('TL', '', case=False, regex=False)
+            cleaned = cleaned.str.replace('₺', '', regex=False)
+            cleaned = cleaned.str.replace(' ', '', regex=False)
+            
+            # Eğer hem nokta hem virgül varsa (örn: 1.250,50), noktayı binlik ayraç sil, virgülü noktaya çevir
+            # Sadece virgül varsa ondalıktır noktaya çevir
+            # Sadece nokta varsa (örn: 1250.50) olduğu gibi bırakabiliriz
+            def parse_val(val):
+                if val == '' or val.lower() == 'nan' or val == 'None':
+                    return 0.0
+                try:
+                    # Nokta ve virgül durum analizi
+                    if ',' in val and '.' in val:
+                        # Hangisi daha sonda?
+                        if val.rfind(',') > val.rfind('.'):
+                            # Avrupa formatı: 1.250,50 -> nokta binlik, virgül ondalık
+                            val = val.replace('.', '').replace(',', '.')
+                        else:
+                            # Amerikan formatı: 1,250.50 -> virgül binlik, nokta ondalık
+                            val = val.replace(',', '')
+                    elif ',' in val:
+                        # Sadece virgül varsa ondalık kabul et: 1250,50 -> 1250.50
+                        val = val.replace(',', '.')
+                    return float(val)
+                except:
+                    return 0.0
+            
+            return cleaned.apply(parse_val)
+        else:
+            return pd.to_numeric(series, errors='coerce').fillna(0.0)
 
     # Sayısal sütunları güvenli bir şekilde dönüştür
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
