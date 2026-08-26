@@ -164,35 +164,43 @@ if uploaded_file is not None:
         if file_name_lower.endswith('.csv'):
             file_bytes = uploaded_file.getvalue()
             
-            # Akıllı CSV tarayıcı: Türkiye standartlarındaki olası tüm kombinasyonları dener
             csv_configs = [
-                {'sep': ';', 'encoding': 'cp1254'}, # Türk tarzı Excel (En yaygın)
+                {'sep': ';', 'encoding': 'cp1254'},
                 {'sep': ';', 'encoding': 'utf-8'},
-                {'sep': ',', 'encoding': 'utf-8'},  # Standart evrensel CSV
+                {'sep': ',', 'encoding': 'utf-8'},
                 {'sep': ',', 'encoding': 'cp1254'}
             ]
             
             for config in csv_configs:
                 try:
                     temp_df = pd.read_csv(io.BytesIO(file_bytes), sep=config['sep'], encoding=config['encoding'])
-                    # Eğer sütunlar tek bir satıra sıkışmadıysa doğru okumuştur
                     if len(temp_df.columns) > 1:
                         df = temp_df
                         break
                 except Exception:
                     continue
             
-            # Eğer hala df boşsa, standart yöntemle tekrar zorla
             if df is None:
                 df = pd.read_csv(io.BytesIO(file_bytes), sep=None, engine='python')
                 
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Sütun adlarındaki ekstra boşlukları temizle
         if df is not None:
             df.columns = df.columns.astype(str).str.strip()
             
+            # --- ESNEK SÜTUN EŞLEŞTİRME (Personel Adı -> Personel) ---
+            rename_map = {}
+            for col in df.columns:
+                col_lower = col.lower()
+                if "personel" in col_lower and "adı" in col_lower:
+                    rename_map[col] = "Personel"
+                elif col_lower == "personel":
+                    rename_map[col] = "Personel"
+            
+            if rename_map:
+                df = df.rename(columns=rename_map)
+
             for col in df.columns:
                 if "kops" in col.lower():
                     val_candidates = pd.to_numeric(df[col], errors='coerce').dropna()
@@ -205,29 +213,28 @@ if uploaded_file is not None:
         st.sidebar.error(f"Kritik Dosya Okuma Hatası: {e}")
         df = None
 
-# Dosya yüklenmemişse uyarı verip bekliyoruz
 if df is None:
     st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
-    # HATA AYIKLAMA (SAYFA BOŞ KALMASIN DİYE EKLENDİ)
     if missing_cols:
         st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
         st.warning(f"🧐 **Dosyanızdan Çekebildiğimiz Sütunlar Şunlar:** {list(df.columns)}")
-        st.info("Lütfen dosyanızdaki sütun başlıklarının harfi harfine doğru olduğundan ve dosyanın hatalı dışa aktarılmadığından emin olun.")
+        st.info("Lütfen dosyanızdaki sütun başlıklarının harfi harfine doğru olduğundan emin olun.")
         st.stop()
 
     if len(df) == 0:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # Sayısal sütunların formatlarını düzelt (1.000,50 tarzı sayıları düzeltir)
+    # Sayısal sütunların formatlarını düzelt
     for col in ["Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]:
-        if df[col].dtype == object:
-            df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+        if col in df.columns:
+            if df[col].dtype == object:
+                df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
     def get_profile_image_url(person_name, g_user):
         clean_name = person_name.strip()
@@ -236,7 +243,6 @@ else:
 
     DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
-    # Kart Listeleme Başlıyor
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
         cols = st.columns(cols_per_row)
