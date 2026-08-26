@@ -9,22 +9,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Özel CSS Stilleri (Görseldeki koyu tema ve yeşil kart tasarımı)
+# Özel CSS Stilleri (Koyu Lacivert ve Turuncu Tema)
 st.markdown("""
     <style>
+    /* Ana arayüz arka planı (Koyu Lacivert) */
     .main {
-        background-color: #0e1117;
+        background-color: #0b132b;
         color: #ffffff;
     }
+    /* Sol kenar çubuğu arka planı */
+    [data-testid="stSidebar"] {
+        background-color: #1c2541;
+        color: #ffffff;
+    }
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+        color: #ffffff !important;
+    }
+    /* Personel Kartı Tasarımı (Turuncu/Lacivert Vurgulu) */
     .person-card {
-        background: #16222a;
-        background: -webkit-linear-gradient(to right, #1a2a3a, #16222a);
-        background: linear-gradient(to right, #1a2a3a, #16222a);
-        border: 2px solid #00ff88;
+        background: #1c2541;
+        border: 2px solid #ff7b00;
         border-radius: 12px;
         padding: 15px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0, 255, 136, 0.15);
+        box-shadow: 0 4px 15px rgba(255, 123, 0, 0.2);
         margin-bottom: 10px;
     }
     .person-name {
@@ -34,13 +42,26 @@ st.markdown("""
         margin-top: 8px;
         margin-bottom: 5px;
     }
-    h1, h2, h3 {
+    /* Başlıklar */
+    h1, h2, h3, h4 {
         color: #ffffff !important;
+    }
+    /* Birincil Butonlar (Turuncu) */
+    .stButton>button {
+        background-color: #ff7b00;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        border: none;
+    }
+    .stButton>button:hover {
+        background-color: #ff9100;
+        color: white;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Kenar Çubuğu (Sidebar)
+# Kenar Çubuğu (Sidebar) - F4 Ödeme Listesi kaldırıldı
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/money-bag.png", width=60)
     st.markdown("### F4 / HESAP")
@@ -56,17 +77,14 @@ with st.sidebar:
     uploaded_file = st.file_uploader("HESAP Excel Dosyasını Yükle", type=["xlsx", "xls", "csv"])
     
     st.markdown("---")
-    if st.button("💰 HESAP", use_container_width=True, type="primary"):
-        st.success("Aktif Sayfa: Hesap Paneli")
-    if st.button("📄 F4 ÖDEME LİSTESİ", use_container_width=True):
-        st.info("Ödeme Listesi modülü")
+    st.button("💰 HESAP", use_container_width=True, type="primary")
 
 # Ana Başlık
 st.markdown("# 💰 Günlük Personel Hesap ve Kasa Takibi")
 st.markdown("#### Personel Durum Kartları")
 st.markdown("---")
 
-# Varsayılan Örnek Veri (Excel yüklenmediğinde görünür)
+# Varsayılan Örnek Veri
 @st.cache_data
 def load_sample_data():
     data = {
@@ -79,7 +97,7 @@ def load_sample_data():
     }
     return pd.DataFrame(data)
 
-# Dosya okuma mantığı
+# Dosya yükleme kontrolü
 if uploaded_file is not None:
     try:
         if uploaded_file.name.endswith('.csv'):
@@ -120,7 +138,7 @@ for i in range(0, len(df), cols_per_row):
             with cols[j]:
                 st.markdown(f"""
                 <div class="person-card">
-                    <div style="color: #00ff88; font-size: 0.8rem; font-weight: bold; margin-bottom: 3px;">✔ İşlem Tamam</div>
+                    <div style="color: #ff7b00; font-size: 0.8rem; font-weight: bold; margin-bottom: 3px;">✔ İşlem Tamam</div>
                     <div class="person-name">{person_name}</div>
                 </div>
                 """, unsafe_allow_html=True)
