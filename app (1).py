@@ -440,7 +440,7 @@ else:
         summary_data.append({
             "Personel": person_name,
             "Nakit Ft. Top": f"{nakit_ft:,.2f} TL",
-            "Nakit Ödeme Top": f"{nakit_odeme:,.2f} TL",
+            "Nakit Ödeme Tutarı Topl.": f"{nakit_odeme:,.2f} TL",
             "Banka / ATM": f"{banka_val:,.2f} TL",
             "HESAP": f"{hesap:,.2f} TL",
             "Ödenen": f"{odenen_val:,.2f} TL",
