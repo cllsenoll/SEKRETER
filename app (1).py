@@ -189,17 +189,24 @@ if uploaded_file is not None:
         if df is not None:
             df.columns = df.columns.astype(str).str.strip()
             
-            # Sütun adı eşleştirme (Personel Adı -> Personel)
+            # Sütun adı esnek eşleştirme haritası
             rename_map = {}
             for col in df.columns:
-                col_lower = col.lower()
-                if "personel" in col_lower and "adı" in col_lower:
+                col_lower = col.lower().replace('.', '').replace('  ', ' ')
+                if "personel" in col_lower and ("adı" in col_lower or "adi" in col_lower or col_lower == "personel"):
                     rename_map[col] = "Personel"
-                elif col_lower == "personel":
-                    rename_map[col] = "Personel"
+                elif "nakit" in col_lower and "ft" in col_lower and "tutar" in col_lower:
+                    rename_map[col] = "Nakit Ft. Tutarı Top"
+                elif "nakit" in col_lower and "odeme" in col_lower:
+                    rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
             if rename_map:
                 df = df.rename(columns=rename_map)
+
+            # Toplam yazan satırları veya boş personelleri filtrele
+            if "Personel" in df.columns:
+                df = df[df["Personel"].notna()]
+                df = df[~df["Personel"].astype(str).str.lower().str.contains("toplam")]
 
             for col in df.columns:
                 if "kops" in col.lower():
@@ -226,7 +233,7 @@ else:
         st.stop()
 
     if len(df) == 0:
-        st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
+        st.error("❌ Yüklenen dosya tamamen boş veya geçerli personel kaydı kalmadı.")
         st.stop()
 
     # --- AKILLI SAYI TEMİZLEME FONKSİYONU ---
