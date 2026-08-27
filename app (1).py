@@ -229,7 +229,7 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş. İçinde hiç personel kaydı yok.")
         st.stop()
 
-    # --- KESİN ÇÖZÜM: AKILLI SAYI TEMİZLEME FONKSİYONU ---
+    # --- AKILLI SAYI TEMİZLEME FONKSİYONU ---
     def clean_numeric_series(series):
         if series.dtype == object or series.dtype == str:
             cleaned = series.astype(str).str.strip()
@@ -312,7 +312,7 @@ else:
                         st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
                         st.write(f"**Nakit Ödeme Tutarı Topl.:** {nakit_odeme:,.2f} TL")
                         
-                        banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
+                        banka_atm = st.number_input("Banka/ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
                         
                         hesap_tutar = nakit_ft + nakit_odeme - banka_atm
                         st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
@@ -338,9 +338,9 @@ else:
                         fark = odenen_tutar - hesap_tutar
                         
                         if fark > 0:
-                            st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>💵 Eksik/Fazla (Fazla/Üstü): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: Fazla ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
                         elif fark < 0:
-                            st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.05rem;'>⚠️ Eksik/Fazla (Eksik): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: Eksik ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
                         else:
                             st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
 
@@ -441,7 +441,7 @@ else:
             "Personel": person_name,
             "Nakit Ft. Top": f"{nakit_ft:,.2f} TL",
             "Nakit Ödeme Tutarı Topl.": f"{nakit_odeme:,.2f} TL",
-            "Banka / ATM": f"{banka_val:,.2f} TL",
+            "Banka/ATM": f"{banka_val:,.2f} TL",
             "HESAP": f"{hesap:,.2f} TL",
             "Ödenen": f"{odenen_val:,.2f} TL",
             "Eksik/Fazla": durum_metni
