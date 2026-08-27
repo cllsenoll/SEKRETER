@@ -163,7 +163,6 @@ if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
         
         if file_name_lower.endswith('.csv'):
-            # CSV okuma için esnek ayraç ve encoding denemeleri (Türkçe karakter ve noktalama için)
             for sep in [';', ',', '\t']:
                 for enc in ['cp1254', 'utf-8', 'latin1']:
                     try:
@@ -181,27 +180,21 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
         
         if df is not None:
-            # Sütun başlıklarındaki boşlukları temizle
             df.columns = df.columns.astype(str).str.strip()
             
-            # Sütun adı esnek eşleştirme haritası
             rename_map = {}
             for col in df.columns:
                 col_clean = col.lower().replace('i', 'i').replace('ı', 'i')
-                # Personel sütunu
                 if "personel" in col_clean and ("adi" in col_clean or "ad" in col_clean or col_clean == "personel"):
                     rename_map[col] = "Personel"
-                # Nakit Ft. Tutarı Top sütunu
                 elif "nakit" in col_clean and "ft" in col_clean and ("tutar" in col_clean or "top" in col_clean):
                     rename_map[col] = "Nakit Ft. Tutarı Top"
-                # Nakit Ödeme Tutarı Topl. sütunu
                 elif "nakit" in col_clean and "odeme" in col_clean:
                     rename_map[col] = "Nakit Ödeme Tutarı Topl."
             
             if rename_map:
                 df = df.rename(columns=rename_map)
 
-            # Toplam satırını veya boş satırları temizle
             if "Personel" in df.columns:
                 df = df[df["Personel"].notna()]
                 df = df[~df["Personel"].astype(str).str.lower().str.contains("toplam")]
@@ -234,7 +227,6 @@ else:
         st.error("❌ Yüklenen dosya tamamen boş veya geçerli personel kaydı kalmadı.")
         st.stop()
 
-    # --- KESİN ÇÖZÜM: TÜRKÇE FORMATLI SAYI TEMİZLEME ---
     def clean_turkish_number(val):
         if pd.isna(val):
             return 0.0
@@ -242,27 +234,21 @@ else:
         if val_str == '' or val_str.lower() == 'nan' or val_str.lower() == 'none':
             return 0.0
         
-        # Para birimi simgelerini temizle
         val_str = val_str.replace('TL', '').replace('₺', '').strip()
         
         try:
-            # Eğer hem nokta hem virgül varsa (örn: 1.234,56 veya 1,234.56)
             if ',' in val_str and '.' in val_str:
                 if val_str.rfind(',') > val_str.rfind('.'):
-                    # Binlik ayracı nokta, ondalık virgül (1234,56)
                     val_str = val_str.replace('.', '').replace(',', '.')
                 else:
-                    # Binlik ayracı virgül, ondalık nokta (1,234.56)
                     val_str = val_str.replace(',', '')
             elif ',' in val_str:
-                # Sadece virgül varsa ondalık virgül kabul et (4529,75 -> 4529.75)
                 val_str = val_str.replace(',', '.')
             
             return float(val_str)
         except:
             return 0.0
 
-    # Sütunları sayısal formata dönüştür
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
@@ -455,7 +441,7 @@ else:
     summary_df = pd.DataFrame(summary_data)
     st.dataframe(summary_df, use_container_width=True)
 
-    # PDF FONKSİYONU
+    # --- TÜRKÇE KARAKTER DESTEKLİ PDF FONKSİYONU ---
     @st.cache_data
     def get_dejavu_font():
         font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
