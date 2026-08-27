@@ -143,34 +143,6 @@ with st.sidebar:
     uploaded_file = st.file_uploader("HESAP Dosyasını Yükle (Excel veya CSV)", type=["xlsx", "xls", "csv"])
     
     st.markdown("---")
-    st.markdown("🖼️ **Personel Fotoğrafları Yükle**")
-    uploaded_images = st.file_uploader(
-        "Personel resimlerini toplu seçin (Örn: ahmet.png, berkay.jpg)", 
-        type=["png", "jpg", "jpeg"], 
-        accept_multiple_files=True,
-        help="Personellerin fotoğraflarını buraya toplu olarak yükleyebilirsiniz."
-    )
-    
-    # Yüklenen görselleri oturum hafızasında eşleyelim
-    if "uploaded_person_images" not in st.session_state:
-        st.session_state["uploaded_person_images"] = {}
-        
-    if uploaded_images:
-        for img_file in uploaded_images:
-            # Dosya adından uzantıyı atıp saf ismi alıyoruz (örn: "Ahmet Berkan")
-            pure_name = os.path.splitext(img_file.name)[0].strip().lower()
-            tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
-            formatted_key = pure_name.translate(tr_map)
-            
-            bytes_data = img_file.getvalue()
-            b64_str = base64.b64encode(bytes_data).decode("utf-8")
-            ext = img_file.name.split('.')[-1].lower()
-            if ext == 'jpg': ext = 'jpeg'
-            
-            st.session_state["uploaded_person_images"][formatted_key] = f"data:image/{ext};base64,{b64_str}"
-        st.sidebar.success(f"✅ {len(uploaded_images)} adet personel fotoğrafı hafızaya yüklendi!")
-
-    st.markdown("---")
     st.button("💰 HESAP", use_container_width=True, type="primary")
 
 # Ana Başlık
@@ -276,19 +248,31 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # AKILLI YEREL GÖRSEL ÇÖZÜCÜ
+    # --- GİTHUB ENTEGRELİ OTOMATİK AVATAR ÇÖZÜCÜ ---
     def get_profile_image_url(person_name):
         clean_name = person_name.strip()
-        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
-        lookup_key = clean_name.translate(tr_map).lower()
         
-        # 1. Önce kullanıcının toplu yüklediği resimlerde var mı diye bak
-        saved_images = st.session_state.get("uploaded_person_images", {})
-        if lookup_key in saved_images:
-            return saved_images[lookup_key]
-            
-        # 2. Eğer yüklenmediyse otomatik şık baş harf rozetine (Avatar) düşer
-        return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
+        # Türkçe karakterleri temizleyip dosya adına uygun formata çeviriyoruz (Örn: "Ahmet Berkan" -> "ahmet_berkan" veya "ahmetberkan")
+        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
+        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "")
+        
+        # ⚠️ Buraya kendi GitHub depo ham (raw) dosya bağlantı kökünüzü yazın.
+        # Örneğin deponuzun adı 'personel-fotolari' ve ana dalınız 'main' ise:
+        # github_raw_base = "https://raw.githubusercontent.com/KULLANICI_ADINIZ/REPO_ADINIZ/main/fotolar/"
+        
+        # Şimdilik örnek / varsayılan bir GitHub şablonu tanımlıyoruz:
+        github_raw_base = "https://raw.githubusercontent.com/kullaniciadi/depoadi/main/avatars/"
+        
+        # Alternatif olarak otomatik CDN yönlendirmesi veya doğrudan GitHub raw linki:
+        github_url = f"{github_raw_base}{formatted_name}.png"
+        
+        # Eğer GitHub linki yerine yedek akıllı rozet göstermek isterseniz veya görsel yüklenemezse 
+        # sistem otomatik olarak ui-avatars (baş harf rozeti) servisine fallback (yedek geçiş) yapar.
+        fallback_url = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
+        
+        # Not: Tarayıcı tarafında GitHub linki doğrudan yüklenemezse (CORS/404 durumunda) sistem çökmemesi 
+        # için HTML içinde hata yakalama (onerror) mekanizması barındıran string döndürebiliriz:
+        return github_url
 
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
@@ -316,12 +300,15 @@ else:
                         status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
                     avatar_url = get_profile_image_url(person_name)
+                    fallback_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
+                    # HTML içine eklenen onerror özelliği sayesinde GitHub'da resim bulunamazsa veya 
+                    # yüklenemezse otomatik olarak şık baş harf rozetine (Avatar) geçer.
                     st.markdown(f"""
                     <div class="person-card">
                         {status_html}
                         <div class="card-content">
-                            <img src="{avatar_url}" class="profile-img">
+                            <img src="{avatar_url}" onerror="this.onerror=null;this.src='{fallback_avatar}';" class="profile-img">
                             <div class="person-info">
                                 <div class="person-name">{person_name}</div>
                                 <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
