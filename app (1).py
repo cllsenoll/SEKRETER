@@ -252,14 +252,15 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # GÜÇLENDİRİLMİŞ AKILLI PROFİL RESMİ URL OLUŞTURUCU VE FALLBACK MEKANİZMASI
+    # CDN DESTEKLİ CORS AŞAN GÜVENLİ PROFİL RESMİ URL OLUŞTURUCU
     def get_profile_image_url(person_name, g_user):
         clean_name = person_name.strip()
-        # Türkçe karakterleri ve olası bozulmaları gider
         tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
         file_name_formatted = clean_name.translate(tr_map).lower() + ".png"
         encoded_name = urllib.parse.quote(file_name_formatted)
-        return f"https://raw.githubusercontent.com/{g_user}/SEKRETER/main/{encoded_name}"
+        
+        # Statically CDN (CORS sorunlarını tamamen önler ve görselleri anında yükler)
+        return f"https://cdn.statically.io/gh/{g_user}/SEKRETER/main/{encoded_name}"
 
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
@@ -287,7 +288,7 @@ else:
                         status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
                     avatar_url = get_profile_image_url(person_name, github_user)
-                    # Eğer GitHub resmi yüklenemezse şık harf tabanlı dinamik avatar üretir
+                    # Resim yüklenemezse şık baş harfli dinamik avatar rozetine düşer
                     fallback_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
                     st.markdown(f"""
