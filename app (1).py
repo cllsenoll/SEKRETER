@@ -252,12 +252,14 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
+    # GÜÇLENDİRİLMİŞ AKILLI PROFİL RESMİ URL OLUŞTURUCU VE FALLBACK MEKANİZMASI
     def get_profile_image_url(person_name, g_user):
         clean_name = person_name.strip()
-        encoded_name = urllib.parse.quote(f"{clean_name}.png")
+        # Türkçe karakterleri ve olası bozulmaları gider
+        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
+        file_name_formatted = clean_name.translate(tr_map).lower() + ".png"
+        encoded_name = urllib.parse.quote(file_name_formatted)
         return f"https://raw.githubusercontent.com/{g_user}/SEKRETER/main/{encoded_name}"
-
-    DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
 
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
@@ -285,12 +287,14 @@ else:
                         status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
                     avatar_url = get_profile_image_url(person_name, github_user)
+                    # Eğer GitHub resmi yüklenemezse şık harf tabanlı dinamik avatar üretir
+                    fallback_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
                     st.markdown(f"""
                     <div class="person-card">
                         {status_html}
                         <div class="card-content">
-                            <img src="{avatar_url}" onerror="this.onerror=null; this.src='{DEFAULT_AVATAR}';" class="profile-img">
+                            <img src="{avatar_url}" onerror="this.onerror=null; this.src='{fallback_avatar}';" class="profile-img">
                             <div class="person-info">
                                 <div class="person-name">{person_name}</div>
                                 <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
@@ -455,6 +459,11 @@ else:
         except Exception:
             return None, None
 
+    def fix_tr(text):
+        if not isinstance(text, str):
+            return text
+        return text
+
     def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -475,25 +484,31 @@ else:
         title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName=font_bold, fontSize=18, textColor=colors.HexColor('#1e3a8a'), alignment=1, spaceAfter=6)
         subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontName=font_bold, fontSize=10, textColor=colors.HexColor('#d97706'), alignment=1, spaceAfter=15)
         
-        elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
-        elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
+        elements.append(Paragraph(fix_tr("Günlük Personel Hesap ve Kasa Takip Raporu"), title_style))
+        elements.append(Paragraph(fix_tr(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}"), subtitle_style))
         elements.append(Spacer(1, 10))
         
-        table_data = [list(data_frame.columns)] + data_frame.values.tolist()
-        t = Table(table_data, colWidths=[150, 95, 95, 85, 85, 85, 115])
+        table_raw_data = [list(data_frame.columns)] + data_frame.values.tolist()
+        
+        cell_style_header = ParagraphStyle('HeaderStyle', fontName=font_bold, fontSize=10, textColor=colors.whitesmoke, alignment=1)
+        cell_style_body = ParagraphStyle('BodyStyle', fontName=font_name, fontSize=9, textColor=colors.HexColor('#1e293b'), alignment=1)
+        
+        formatted_table_data = []
+        for row_idx, row in enumerate(table_raw_data):
+            row_cells = []
+            for val in row:
+                styler = cell_style_header if row_idx == 0 else cell_style_body
+                row_cells.append(Paragraph(fix_tr(str(val)), styler))
+            formatted_table_data.append(row_cells)
+
+        t = Table(formatted_table_data, colWidths=[150, 95, 95, 85, 85, 85, 115])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 0), (-1, 0), font_bold),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
-            ('FONTNAME', (0, 1), (-1, -1), font_name),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
         ]))
         
         elements.append(t)
