@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import urllib.parse
 import os
+import base64
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
@@ -228,9 +229,32 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- KUSURSUZ BAŞ HARF AVATAR ÇÖZÜCÜ ---
-    def get_profile_image_url(person_name):
-        # Kişinin adından otomatik olarak şık, kurumsal renkli baş harf rozeti üretir (Hiçbir kırık resim hatası vermez)
+    # --- KESİN VE GÜVENLİ GİTHUB GÖRSEL ÇEKİCİ (BASE64) ---
+    @st.cache_data(ttl=3600)
+    def get_base64_avatar(person_name):
+        clean_name = person_name.strip()
+        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
+        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "_")
+        
+        github_user = "cllsenoll"
+        github_repo = "SEKRETER"
+        branch_name = "main"
+        
+        # Olası uzantı ve format varyasyonlarını deneyelim (.png, .jpg)
+        extensions = ["png", "jpg", "jpeg"]
+        for ext in extensions:
+            url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{formatted_name}.{ext}"
+            try:
+                import urllib.request
+                req = urllib.request.urlopen(url, timeout=3)
+                img_bytes = req.read()
+                encoded = base64.b64encode(img_bytes).decode()
+                mime_type = "image/png" if ext == "png" else "image/jpeg"
+                return f"data:{mime_type};base64,{encoded}"
+            except:
+                continue
+                
+        # Eğer GitHub'da fotoğraf bulunamazsa şık baş harf rozeti döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
     cols_per_row = 4
@@ -255,13 +279,13 @@ else:
                     is_completed = st.session_state.get(completed_key, False)
                     status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>' if is_completed else '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
-                    avatar_url = get_profile_image_url(person_name)
+                    avatar_src = get_base64_avatar(person_name)
 
                     st.markdown(f"""
                     <div class="person-card">
                         {status_html}
                         <div class="card-content">
-                            <img src="{avatar_url}" class="profile-img">
+                            <img src="{avatar_src}" class="profile-img">
                             <div class="person-info">
                                 <div class="person-name">{person_name}</div>
                                 <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
