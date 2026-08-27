@@ -33,20 +33,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #ffffff !important;
     }
-    [data-testid="stFileUploaderDropzone"] {
-        background: linear-gradient(135deg, #ff7b00 0%, #d97706 100%) !important;
-        border: 2px dashed #ffffff !important;
-        border-radius: 12px !important;
-    }
-    [data-testid="stFileUploaderDropzone"] * {
-        color: #ffffff !important;
-    }
-    [data-testid="stFileUploaderDropzone"] button {
-        background-color: #ffffff !important;
-        color: #d97706 !important;
-        border-radius: 6px !important;
-        font-weight: bold !important;
-    }
     .person-card {
         background: linear-gradient(145deg, #1e3a8a, #172554);
         border: 2px solid #ff7b00;
@@ -215,23 +201,19 @@ else:
 
     if missing_cols:
         st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
-        st.warning(f"🧐 **Dosyanızdan Çekebildiğimiz Sütunlar Şunlar:** {list(df.columns)}")
-        st.info("Lütfen CSV / Excel dosyanızdaki sütun başlıklarını kontrol edin.")
         st.stop()
 
     if len(df) == 0:
-        st.error("❌ Yüklenen dosya tamamen boş veya geçerli personel kaydı kalmadı.")
+        st.error("❌ Yüklenen dosya tamamen boş.")
         st.stop()
 
     def clean_turkish_number(val):
         if pd.isna(val):
             return 0.0
         val_str = str(val).strip()
-        if val_str == '' or val_str.lower() == 'nan' or val_str.lower() == 'none':
+        if val_str == '' or val_str.lower() == 'nan':
             return 0.0
-        
         val_str = val_str.replace('TL', '').replace('₺', '').strip()
-        
         try:
             if ',' in val_str and '.' in val_str:
                 if val_str.rfind(',') > val_str.rfind('.'):
@@ -240,7 +222,6 @@ else:
                     val_str = val_str.replace(',', '')
             elif ',' in val_str:
                 val_str = val_str.replace(',', '.')
-            
             return float(val_str)
         except:
             return 0.0
@@ -248,31 +229,21 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB ENTEGRELİ OTOMATİK AVATAR ÇÖZÜCÜ ---
+    # --- KESİN ÇÖZÜM: GİTHUB AVATAR EŞLEŞTİRİCİ ---
     def get_profile_image_url(person_name):
         clean_name = person_name.strip()
-        
-        # Türkçe karakterleri temizleyip dosya adına uygun formata çeviriyoruz (Örn: "Ahmet Berkan" -> "ahmet_berkan" veya "ahmetberkan")
         tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
-        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "")
+        # Dosya adı boşluksuz veya alt çizgili olabilir. Excel'deki adın birebir küçük harfe çevrilmiş hali:
+        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "_")
         
-        # ⚠️ Buraya kendi GitHub depo ham (raw) dosya bağlantı kökünüzü yazın.
-        # Örneğin deponuzun adı 'personel-fotolari' ve ana dalınız 'main' ise:
-        # github_raw_base = "https://raw.githubusercontent.com/KULLANICI_ADINIZ/REPO_ADINIZ/main/fotolar/"
+        # ⚠️ AŞAĞIDAKI BİLGİLERİ KENDİ GİTHUB BİLGİLERİNİZLE DEĞİŞTİRİN:
+        # Örn: Kullanıcı Adınız: 'celalsenol' , Depo Adınız: 'personel-resimleri' , Branch: 'main'
+        github_user = "kullaniciadi"
+        github_repo = "depoadi"
+        branch_name = "main"
         
-        # Şimdilik örnek / varsayılan bir GitHub şablonu tanımlıyoruz:
-        github_raw_base = "https://raw.githubusercontent.com/kullaniciadi/depoadi/main/avatars/"
-        
-        # Alternatif olarak otomatik CDN yönlendirmesi veya doğrudan GitHub raw linki:
-        github_url = f"{github_raw_base}{formatted_name}.png"
-        
-        # Eğer GitHub linki yerine yedek akıllı rozet göstermek isterseniz veya görsel yüklenemezse 
-        # sistem otomatik olarak ui-avatars (baş harf rozeti) servisine fallback (yedek geçiş) yapar.
-        fallback_url = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
-        
-        # Not: Tarayıcı tarafında GitHub linki doğrudan yüklenemezse (CORS/404 durumunda) sistem çökmemesi 
-        # için HTML içinde hata yakalama (onerror) mekanizması barındıran string döndürebiliriz:
-        return github_url
+        # GitHub Raw Link Şablonu
+        return f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{formatted_name}.png"
 
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
@@ -294,16 +265,12 @@ else:
                     hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                     
                     is_completed = st.session_state.get(completed_key, False)
-                    if is_completed:
-                        status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
-                    else:
-                        status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
+                    status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>' if is_completed else '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
                     avatar_url = get_profile_image_url(person_name)
+                    # GitHub'da resim bulunamazsa veya ad uyuşmazsa otomatik şık baş harf rozetine düşer
                     fallback_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
-                    # HTML içine eklenen onerror özelliği sayesinde GitHub'da resim bulunamazsa veya 
-                    # yüklenemezse otomatik olarak şık baş harf rozetine (Avatar) geçer.
                     st.markdown(f"""
                     <div class="person-card">
                         {status_html}
@@ -322,7 +289,6 @@ else:
                         st.write(f"**Nakit Ödeme Tutarı Topl.:** {nakit_odeme:,.2f} TL")
                         
                         banka_atm = st.number_input("Banka/ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
-                        
                         hesap_tutar = nakit_ft + nakit_odeme - banka_atm
                         st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
                         
@@ -345,24 +311,20 @@ else:
                             st.session_state[completed_key] = True
 
                         fark = odenen_tutar - hesap_tutar
-                        
                         if fark > 0:
-                            st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: Fazla ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='color: #00ff66; font-weight: bold;'>✅ Fazla ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
                         elif fark < 0:
-                            st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: Eksik ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='color: #ff3333; font-weight: bold;'>✅ Eksik ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
                         else:
-                            st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
+                            st.markdown("<span style='color: #00ff66; font-weight: bold;'>✅ Tamam (0.00 TL)</span>", unsafe_allow_html=True)
 
     # --- GENEL KASA & PARA SAYMA ALANI ---
     st.markdown("---")
     st.markdown("### 💵 Genel Şube Kasası / Para Sayma Paneli")
-    st.markdown("Tüm şubenin toplam nakit kasasını saymak için banknot adetlerini giriniz.")
 
     with st.container():
         st.markdown('<div class="kasa-panel">', unsafe_allow_html=True)
-        
         col1, col2, col3 = st.columns(3)
-        
         with col1:
             b200 = st.number_input("200 TL Adet", min_value=0, value=st.session_state.get("genel_b200", 0), step=1, key="genel_b200")
             b20 = st.number_input("20 TL Adet", min_value=0, value=st.session_state.get("genel_b20", 0), step=1, key="genel_b20")
@@ -374,10 +336,6 @@ else:
             b5 = st.number_input("5 TL Adet", min_value=0, value=st.session_state.get("genel_b5", 0), step=1, key="genel_b5")
 
         toplam_sayilan_kasa = (b200 * 200) + (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.info(f"📊 Toplam Sayılan Banknot: **{toplam_sayilan_kasa:,.2f} TL**")
-        
         st.session_state["genel_net_kasa"] = float(toplam_sayilan_kasa)
 
         if excel_kops_degeri is not None and "genel_kops_kasa" not in st.session_state:
@@ -385,67 +343,38 @@ else:
 
         st.markdown("<br>", unsafe_allow_html=True)
         k_col1, k_col2 = st.columns(2)
-        
         with k_col1:
-            net_kasa_giris = st.number_input(
-                "📥 Şube Net Kasa Değeri", 
-                min_value=0.0, 
-                value=float(st.session_state["genel_net_kasa"]), 
-                step=10.0, 
-                key="genel_net_kasa"
-            )
-            
+            net_kasa_giris = st.number_input("📥 Şube Net Kasa Değeri", min_value=0.0, value=float(st.session_state["genel_net_kasa"]), step=10.0, key="genel_net_kasa")
         with k_col2:
-            kops_kasa_giris = st.number_input(
-                "📥 KOPS KASA", 
-                min_value=0.0, 
-                value=float(st.session_state.get("genel_kops_kasa", 0.0)), 
-                step=10.0, 
-                key="genel_kops_kasa"
-            )
-
+            kops_kasa_giris = st.number_input("📥 KOPS KASA", min_value=0.0, value=float(st.session_state.get("genel_kops_kasa", 0.0)), step=10.0, key="genel_kops_kasa")
         st.markdown('</div>', unsafe_allow_html=True)
 
     sube_net_val = float(st.session_state.get('genel_net_kasa', 0.0))
     kops_val = float(st.session_state.get('genel_kops_kasa', 0.0))
     kasa_fark = sube_net_val - kops_val
 
-    # --- KASA ÖZETİ VE UYARI ALANI ---
+    # --- KASA ÖZETİ VE TABLO ---
     st.markdown("---")
     st.markdown("### 📊 Genel Hesap Özeti ve Kasa Durumu")
-
-    col_ozet1, col_ozet2 = st.columns(2)
-    with col_ozet1:
-        st.markdown(f"### 🏦 Şube Net Kasa: **{sube_net_val:,.2f} TL**")
-    with col_ozet2:
-        st.markdown(f"### 💳 KOPS KASA: **{kops_val:,.2f} TL**")
-
+    
     if kasa_fark < 0:
-        st.markdown(f"<div style='background-color: rgba(255, 51, 51, 0.2); border: 2px solid #ff3333; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; margin-top: 10px; margin-bottom: 15px;'>⚠️ Kasa Durumu: AÇIK ({abs(kasa_fark):,.2f} TL Eksik)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: rgba(255, 51, 51, 0.2); border: 2px solid #ff3333; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: #ff6b6b;'>⚠️ Kasa Durumu: AÇIK ({abs(kasa_fark):,.2f} TL Eksik)</div>", unsafe_allow_html=True)
     elif kasa_fark > 0:
-        st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px; margin-bottom: 15px;'>💵 Kasa Durumu: FAZLA ({kasa_fark:,.2f} TL Fazla)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: #00ff88;'>💵 Kasa Durumu: FAZLA ({kasa_fark:,.2f} TL Fazla)</div>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #00ff88; margin-top: 10px; margin-bottom: 15px;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: #00ff88;'>✅ Kasa Durumu: TAMAM (Fark Yok)</div>", unsafe_allow_html=True)
 
-    # --- GENEL HESAP ÖZETİ TABLOSU ---
     summary_data = []
     for idx, row in df.iterrows():
         person_name = str(row["Personel"])
         nakit_ft = float(row["Nakit Ft. Tutarı Top"])
         nakit_odeme = float(row["Nakit Ödeme Tutarı Topl."])
-        
         banka_val = st.session_state.get(f"banka_{idx}", 0.0)
         hesap = nakit_ft + nakit_odeme - banka_val
         odenen_val = st.session_state.get(f"odenen_{idx}", hesap)
         fark_val = odenen_val - hesap
         
-        if fark_val > 0:
-            durum_metni = f"Fazla: +{fark_val:,.2f} TL"
-        elif fark_val < 0:
-            durum_metni = f"Eksik: {fark_val:,.2f} TL"
-        else:
-            durum_metni = "Tamam (0.00 TL)"
-        
+        durum_metni = f"Fazla: +{fark_val:,.2f} TL" if fark_val > 0 else (f"Eksik: {fark_val:,.2f} TL" if fark_val < 0 else "Tamam")
         summary_data.append({
             "Personel": person_name,
             "Nakit Ft. Top": f"{nakit_ft:,.2f} TL",
@@ -459,24 +388,18 @@ else:
     summary_df = pd.DataFrame(summary_data)
     st.dataframe(summary_df, use_container_width=True)
 
-    # --- TÜRKÇE KARAKTER DESTEKLİ PDF FONKSİYONU ---
+    # --- PDF ÇIKTISI ---
     @st.cache_data
     def get_dejavu_font():
         font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
         font_bold_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
-        local_font = "DejaVuSans.ttf"
-        local_bold = "DejaVuSans-Bold.ttf"
+        local_font, local_bold = "DejaVuSans.ttf", "DejaVuSans-Bold.ttf"
         try:
             if not os.path.exists(local_font): urllib.request.urlretrieve(font_url, local_font)
             if not os.path.exists(local_bold): urllib.request.urlretrieve(font_bold_url, local_bold)
             return local_font, local_bold
-        except Exception:
+        except:
             return None, None
-
-    def fix_tr(text):
-        if not isinstance(text, str):
-            return text
-        return text
 
     def generate_pdf(data_frame, sube_kasa_tutari, kops_kasa_tutari, durum_mesaji):
         buffer = io.BytesIO()
@@ -484,37 +407,21 @@ else:
         elements = []
         
         f_path, f_bold_path = get_dejavu_font()
-        if f_path and f_bold_path:
-            try:
-                pdfmetrics.registerFont(TTFont('DejaVuSans', f_path))
-                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', f_bold_path))
-                font_name, font_bold = 'DejaVuSans', 'DejaVuSans-Bold'
-            except:
-                font_name, font_bold = 'Helvetica', 'Helvetica-Bold'
-        else:
-            font_name, font_bold = 'Helvetica', 'Helvetica-Bold'
+        font_name, font_bold = ('DejaVuSans', 'DejaVuSans-Bold') if f_path and f_bold_path else ('Helvetica', 'Helvetica-Bold')
         
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName=font_bold, fontSize=18, textColor=colors.HexColor('#1e3a8a'), alignment=1, spaceAfter=6)
         subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontName=font_bold, fontSize=10, textColor=colors.HexColor('#d97706'), alignment=1, spaceAfter=15)
         
-        elements.append(Paragraph(fix_tr("Günlük Personel Hesap ve Kasa Takip Raporu"), title_style))
-        elements.append(Paragraph(fix_tr(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}"), subtitle_style))
+        elements.append(Paragraph("Günlük Personel Hesap ve Kasa Takip Raporu", title_style))
+        elements.append(Paragraph(f"Şube Net Kasa: {sube_kasa_tutari:,.2f} TL  |  KOPS KASA: {kops_kasa_tutari:,.2f} TL  |  Durum: {durum_mesaji}", subtitle_style))
         elements.append(Spacer(1, 10))
         
         table_raw_data = [list(data_frame.columns)] + data_frame.values.tolist()
-        
         cell_style_header = ParagraphStyle('HeaderStyle', fontName=font_bold, fontSize=10, textColor=colors.whitesmoke, alignment=1)
         cell_style_body = ParagraphStyle('BodyStyle', fontName=font_name, fontSize=9, textColor=colors.HexColor('#1e293b'), alignment=1)
         
-        formatted_table_data = []
-        for row_idx, row in enumerate(table_raw_data):
-            row_cells = []
-            for val in row:
-                styler = cell_style_header if row_idx == 0 else cell_style_body
-                row_cells.append(Paragraph(fix_tr(str(val)), styler))
-            formatted_table_data.append(row_cells)
-
+        formatted_table_data = [[Paragraph(str(val), cell_style_header if r == 0 else cell_style_body) for val in row] for r, row in enumerate(table_raw_data)]
         t = Table(formatted_table_data, colWidths=[150, 95, 95, 85, 85, 85, 115])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
@@ -530,10 +437,7 @@ else:
         buffer.seek(0)
         return buffer.getvalue()
 
-    if kasa_fark < 0: durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)"
-    elif kasa_fark > 0: durum_str = f"FAZLA ({kasa_fark:,.2f} TL)"
-    else: durum_str = "TAMAM"
-
+    durum_str = f"AÇIK ({abs(kasa_fark):,.2f} TL)" if kasa_fark < 0 else (f"FAZLA ({kasa_fark:,.2f} TL)" if kasa_fark > 0 else "TAMAM")
     pdf_bytes = generate_pdf(summary_df, sube_net_val, kops_val, durum_str)
 
     st.download_button(
