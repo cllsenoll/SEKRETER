@@ -3,7 +3,6 @@ import pandas as pd
 import io
 import urllib.parse
 import os
-import base64
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
@@ -229,21 +228,10 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- KESİN ÇÖZÜM: GİTHUB AVATAR EŞLEŞTİRİCİ ---
+    # --- KUSURSUZ BAŞ HARF AVATAR ÇÖZÜCÜ ---
     def get_profile_image_url(person_name):
-        clean_name = person_name.strip()
-        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
-        # Dosya adı boşluksuz veya alt çizgili olabilir. Excel'deki adın birebir küçük harfe çevrilmiş hali:
-        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "_")
-        
-        # ⚠️ AŞAĞIDAKI BİLGİLERİ KENDİ GİTHUB BİLGİLERİNİZLE DEĞİŞTİRİN:
-        # Örn: Kullanıcı Adınız: 'celalsenol' , Depo Adınız: 'personel-resimleri' , Branch: 'main'
-        github_user = "kullaniciadi"
-        github_repo = "depoadi"
-        branch_name = "main"
-        
-        # GitHub Raw Link Şablonu
-        return f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{formatted_name}.png"
+        # Kişinin adından otomatik olarak şık, kurumsal renkli baş harf rozeti üretir (Hiçbir kırık resim hatası vermez)
+        return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
     cols_per_row = 4
     for i in range(0, len(df), cols_per_row):
@@ -268,14 +256,12 @@ else:
                     status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>' if is_completed else '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
 
                     avatar_url = get_profile_image_url(person_name)
-                    # GitHub'da resim bulunamazsa veya ad uyuşmazsa otomatik şık baş harf rozetine düşer
-                    fallback_avatar = f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
                     st.markdown(f"""
                     <div class="person-card">
                         {status_html}
                         <div class="card-content">
-                            <img src="{avatar_url}" onerror="this.onerror=null;this.src='{fallback_avatar}';" class="profile-img">
+                            <img src="{avatar_url}" class="profile-img">
                             <div class="person-info">
                                 <div class="person-name">{person_name}</div>
                                 <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
