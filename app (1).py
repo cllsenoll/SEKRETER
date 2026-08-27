@@ -229,7 +229,7 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- KESİN VE GÜVENLİ GİTHUB GÖRSEL ÇEKİCİ (BASE64) ---
+    # --- KESİN VE ÇOKLU KLASÖR TARAYICILI GİTHUB GÖRSEL ÇEKİCİ (BASE64) ---
     @st.cache_data(ttl=3600)
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
@@ -240,21 +240,24 @@ else:
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # Olası uzantı ve format varyasyonlarını deneyelim (.png, .jpg)
+        # GitHub deposundaki olası olası klasörler ve uzantılar
+        folders = ["", "fotograflar/", "img/", "images/", "resimler/"]
         extensions = ["png", "jpg", "jpeg"]
-        for ext in extensions:
-            url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{formatted_name}.{ext}"
-            try:
-                import urllib.request
-                req = urllib.request.urlopen(url, timeout=3)
-                img_bytes = req.read()
-                encoded = base64.b64encode(img_bytes).decode()
-                mime_type = "image/png" if ext == "png" else "image/jpeg"
-                return f"data:{mime_type};base64,{encoded}"
-            except:
-                continue
+        
+        import urllib.request
+        for folder in folders:
+            for ext in extensions:
+                url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{folder}{formatted_name}.{ext}"
+                try:
+                    req = urllib.request.urlopen(url, timeout=2)
+                    img_bytes = req.read()
+                    encoded = base64.b64encode(img_bytes).decode()
+                    mime_type = "image/png" if ext == "png" else "image/jpeg"
+                    return f"data:{mime_type};base64,{encoded}"
+                except:
+                    continue
                 
-        # Eğer GitHub'da fotoğraf bulunamazsa şık baş harf rozeti döner
+        # Eğer GitHub'da hiçbir klasörde bulunamazsa şık baş harf rozeti döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
     cols_per_row = 4
