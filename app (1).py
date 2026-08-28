@@ -355,11 +355,17 @@ else:
             st.session_state["genel_kops_kasa"] = excel_kops_degeri
 
         st.markdown("<br>", unsafe_allow_html=True)
-        k_col1, k_col2 = st.columns(2)
+        k_col1, k_col2, k_col3, k_col4 = st.columns(4)
         with k_col1:
             net_kasa_giris = st.number_input("📥 Şube Net Kasa Değeri", min_value=0.0, value=float(st.session_state["genel_net_kasa"]), step=10.0, key="genel_net_kasa")
         with k_col2:
             kops_kasa_giris = st.number_input("📥 KOPS KASA", min_value=0.0, value=float(st.session_state.get("genel_kops_kasa", 0.0)), step=10.0, key="genel_kops_kasa")
+        with k_col3:
+            atm_yatirilacak_giris = st.number_input("📥 ATM Yatırılacak", min_value=0.0, value=float(st.session_state.get("genel_atm_yatirilacak", 0.0)), step=10.0, key="genel_atm_yatirilacak")
+        with k_col4:
+            devredecek_hesap = max(0.0, kops_kasa_giris - atm_yatirilacak_giris)
+            st.session_state["genel_devredecek"] = devredecek_hesap
+            st.metric(label="📥 Devredecek", value=f"{devredecek_hesap:,.2f} TL")
         st.markdown('</div>', unsafe_allow_html=True)
 
     sube_net_val = float(st.session_state.get('genel_net_kasa', 0.0))
