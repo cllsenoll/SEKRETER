@@ -131,6 +131,14 @@ with st.sidebar:
     st.markdown("👤 **Aktif Kullanıcı**")
     st.info("CELAL ŞENOL (Şube Şefi)")
     st.markdown("---")
+    
+    # --- GİTHUB AYARLARI SOL PANEL ---
+    st.markdown("### ⚙️ GitHub Ayarları")
+    gh_user = st.text_input("GitHub Kullanıcı Adı", value="cllsenoll")
+    gh_repo = st.text_input("Depo (Repo) Adı", value="SEKRETER")
+    gh_branch = st.text_input("Branch Adı", value="main")
+    
+    st.markdown("---")
     uploaded_file = st.file_uploader("HESAP Dosyasını Yükle (Excel veya CSV)", type=["xlsx", "xls", "csv"])
     st.markdown("---")
     st.button("💰 HESAP", use_container_width=True, type="primary")
@@ -230,24 +238,19 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- ÖNBELLEKSİZ VE GARANTİLİ FOTOĞRAF ÇEKME FONKSİYONU ---
+    # --- DİNAMİK FOTOĞRAF ÇEKME (SOL PANELDEKİ BİLGİLERE GÖRE) ---
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
-        github_user = "cllsenoll"
-        github_repo = "SEKRETER"
-        branch_name = "main"
-        
         extensions = ["PNG", "png", "JPG", "jpg", "jpeg"]
         import urllib.request
         
         for ext in extensions:
-            # safe="" parametresi ile tüm boşluk ve özel karakterlerin tam olarak URL encode edilmesini sağlıyoruz
             file_encoded = urllib.parse.quote(f"{clean_name}.{ext}", safe="")
-            url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{file_encoded}"
+            url = f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
             try:
                 req = urllib.request.urlopen(url, timeout=3)
                 img_bytes = req.read()
-                if len(img_bytes) > 200: # Geçerli bir görsel boyutu kontrolü
+                if len(img_bytes) > 200:
                     encoded = base64.b64encode(img_bytes).decode()
                     mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
                     return f"data:{mime_type};base64,{encoded}"
