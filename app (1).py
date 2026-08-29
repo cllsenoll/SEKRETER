@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import urllib.request
 import urllib.parse
 import os
 import base64
@@ -131,14 +132,6 @@ with st.sidebar:
     st.markdown("👤 **Aktif Kullanıcı**")
     st.info("CELAL ŞENOL (Şube Şefi)")
     st.markdown("---")
-    
-    # --- GİTHUB AYARLARI SOL PANEL ---
-    st.markdown("### ⚙️ GitHub Ayarları")
-    gh_user = st.text_input("GitHub Kullanıcı Adı", value="cllsenoll")
-    gh_repo = st.text_input("Depo (Repo) Adı", value="SEKRETER")
-    gh_branch = st.text_input("Branch Adı", value="main")
-    
-    st.markdown("---")
     uploaded_file = st.file_uploader("HESAP Dosyasını Yükle (Excel veya CSV)", type=["xlsx", "xls", "csv"])
     st.markdown("---")
     st.button("💰 HESAP", use_container_width=True, type="primary")
@@ -238,24 +231,37 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- DİNAMİK FOTOĞRAF ÇEKME (SOL PANELDEKİ BİLGİLERE GÖRE) ---
+    # --- KESİN ÇÖZÜMLÜ GİTHUB FOTOĞRAF ÇEKME FONKSİYONU ---
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
-        extensions = ["PNG", "png", "JPG", "jpg", "jpeg"]
-        import urllib.request
+        gh_user = "cllsenoll"
+        gh_repo = "SEKRETER"
+        gh_branch = "main"
         
-        for ext in extensions:
-            file_encoded = urllib.parse.quote(f"{clean_name}.{ext}", safe="")
-            url = f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
-            try:
-                req = urllib.request.urlopen(url, timeout=3)
-                img_bytes = req.read()
-                if len(img_bytes) > 200:
-                    encoded = base64.b64encode(img_bytes).decode()
-                    mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
-                    return f"data:{mime_type};base64,{encoded}"
-            except Exception:
-                continue
+        # GitHub'daki olası dosya adı varyasyonları (Orijinal ad, Büyük harf, Küçük harf)
+        name_variations = [
+            clean_name,
+            clean_name.upper(),
+            clean_name.lower(),
+            clean_name.title()
+        ]
+        
+        extensions = ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG"]
+        
+        for name in name_variations:
+            for ext in extensions:
+                file_name = f"{name}.{ext}"
+                file_encoded = urllib.parse.quote(file_name)
+                url = f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
+                try:
+                    req = urllib.request.urlopen(url, timeout=2)
+                    img_bytes = req.read()
+                    if len(img_bytes) > 200:
+                        encoded = base64.b64encode(img_bytes).decode()
+                        mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
+                        return f"data:{mime_type};base64,{encoded}"
+                except Exception:
+                    continue
                 
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128"
 
