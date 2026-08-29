@@ -1,56 +1,331 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(layout="wide")
-
-st.title("Personel Ödeme ve Mutabakat Paneli")
-
-# Örnek veri seti (Görseldeki verilere benzer)
-data = {
-    "Personel": [
-        "EMRECAN KEÇE", "BERKAY SAKİN", "ALATTİN CEBECİ", "BURCU DÜREN",
-        "AHMET BERKAN ÖKSÜZ", "CELAL ŞENOL", "MEHMET KAYMAZ", "SUAT ARI", "SERGEN GÖRÜROĞLU"
-    ],
-    "Nakit Ft. Top": [0.0, 1149.0, 0.0, 0.0, 0.0, 1800.0, 1150.0, 0.0, 0.0],
-    "Nakit Ödeme Tutarı Topl.": [157.10, 852.12, 0.0, 496.19, 995.74, 981.95, 2094.10, 248.57, 0.0],
-    "Banka/ATM": [0.0, 0.0, 0.0, 500.0, 1000.0, 2900.0, 0.0, 0.0, 0.0],
-    "Ödenen": [157.00, 2000.00, 0.0, 496.19, 0.0, 2781.95, 3244.00, 250.00, 0.0]
-}
-
-df = pd.DataFrame(data)
-
-# Hesaplanan kolonlar
-df["HESAP"] = df["Nakit Ft. Top"] + df["Nakit Ödeme Tutarı Topl."] + df["Banka/ATM"]
-
-# st.data_editor kullanarak tablonun düzenlenebilir olmasını sağlıyoruz
-st.markdown("### Personel İşlem Tablosu (Değiştirmek istediğiniz hücreye çift tıklayarak düzenleyebilirsiniz)")
-
-edited_df = st.data_editor(
-    df,
-    num_rows="dynamic",
-    use_container_width=True,
-    column_config={
-        "Personel": st.column_config.TextColumn("Personel"),
-        "Nakit Ft. Top": st.column_config.NumberColumn("Nakit Ft. Top", format="%.2f TL"),
-        "Nakit Ödeme Tutarı Topl.": st.column_config.NumberColumn("Nakit Ödeme Tutarı Topl.", format="%.2f TL"),
-        "Banka/ATM": st.column_config.NumberColumn("Banka/ATM", format="%.2f TL"),
-        "HESAP": st.column_config.NumberColumn("HESAP", format="%.2f TL", disabled=True),
-        "Ödenen": st.column_config.NumberColumn("Ödenen", format="%.2f TL"),
-    },
-    hide_index=False
+# Sayfa yapılandırması
+st.set_page_config(
+    page_title="Günlük Personel Hesap ve Kasa Takibi",
+    page_icon="💰",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Eksik / Fazla Hesaplama Mantığı
-def hesapla_durum(row):
-    fark = row["Ödenen"] - row["HESAP"]
-    if abs(fark) < 0.01:
-        return "Tamam"
-    elif fark < 0:
-        return f"Eksik: {fark:.2f} TL"
+# Gelişmiş Canlı Mavi ve Turuncu Tema CSS Kodları
+st.markdown("""
+    <style>
+    /* Ana Ekran Arka Planı (Canlı Mavi Gradyan) */
+    .stApp {
+        background: linear-gradient(135deg, #102a43 0%, #243b55 50%, #1f4068 100%);
+        color: #ffffff;
+    }
+    
+    /* Sol Kenar Çubuğu (Sidebar) Arka Planı */
+    [data-testid="stSidebar"] {
+        background-color: #1a365d;
+        border-right: 2px solid #ff7b00;
+    }
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+        color: #ffffff !important;
+    }
+
+    /* Personel Kartları Tasarımı */
+    .person-card {
+        background: linear-gradient(145deg, #1e3a8a, #172554);
+        border: 2px solid #ff7b00;
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
+        margin-bottom: 8px;
+    }
+    .card-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 6px;
+    }
+    .profile-img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ff7b00;
+    }
+    .person-info {
+        text-align: left;
+    }
+    .person-name {
+        font-size: 0.90rem;
+        font-weight: bold;
+        color: #ffffff;
+        margin-bottom: 2px;
+        letter-spacing: 0.3px;
+    }
+    .person-net-tutar {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #00ff88;
+    }
+
+    /* Expander ve Kutuların Görünümü */
+    .streamlit-expanderHeader {
+        background-color: #1e3a8a !important;
+        color: #ff7b00 !important;
+        border: 1px solid #ff7b00 !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Input ve Widget Etiketlerini Beyaz Yapma */
+    .stNumberInput label, .stMetric label {
+        color: #ffffff !important;
+    }
+
+    /* Başlıklar */
+    h1, h2, h3, h4 {
+        color: #ffffff !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    /* Turuncu Vurgulu Butonlar */
+    .stButton>button {
+        background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        border: none;
+        box-shadow: 0 4px 10px rgba(255, 123, 0, 0.3);
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #ff9e00 0%, #ffb703 100%);
+        color: white;
+    }
+
+    /* Metrik Değeri */
+    [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Kenar Çubuğu (Sidebar)
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/money-bag.png", width=60)
+    st.markdown("### F4 / HESAP")
+    st.markdown("**Görükle Acente**")
+    st.markdown("---")
+    
+    st.markdown("👤 **Aktif Kullanıcı**")
+    st.info("CELAL ŞENOL (Şube Şefi)")
+    
+    st.markdown("---")
+    st.markdown("📂 **Rapor / Liste Yükle**")
+    
+    uploaded_file = st.file_uploader("HESAP Excel Dosyasını Yükle", type=["xlsx", "xls", "csv"])
+    
+    st.markdown("---")
+    st.button("💰 HESAP", use_container_width=True, type="primary")
+
+# Ana Başlık
+st.markdown("# 💰 Günlük Personel Hesap ve Kasa Takibi")
+st.markdown("#### Personel Durum Kartları")
+st.markdown("---")
+
+# Varsayılan Örnek Veri
+@st.cache_data
+def load_sample_data():
+    data = {
+        "Personel": [
+            "HATİCE KÜBRA IŞIK", "EMRECAN KEÇE", "BERKAY SAKİN", "ALATTİN CEBECİ",
+            "BURCU DÜREN", "AHMET BERKAN ÖKSÜZ", "CELAL ŞENOL", "MEHMET KAYMAZ"
+        ],
+        "Nakit Ft. Tutarı Top": [4500.00, 4000.00, 2000.00, 0.00, 1200.00, 200.00, 0.00, 250.00],
+        "Nakit Ödeme Tutarı Topl.": [1443.23, 1535.38, 877.45, 0.00, 378.54, 39.81, 0.00, 29.97]
+    }
+    return pd.DataFrame(data)
+
+# Dosya yükleme kontrolü
+if uploaded_file is not None:
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+        st.sidebar.success("Excel dosyası başarıyla yüklendi!")
+    except Exception as e:
+        st.sidebar.error(f"Dosya okuma hatası: {e}")
+        df = load_sample_data()
+else:
+    df = load_sample_data()
+    st.info("💡 Bilgi: Kendi 'HESAP' Excel dosyanızı yüklemediğiniz sürece örnek veriler gösterilmektedir. Excel dosyanızda **'Personel'**, **'Nakit Ft. Tutarı Top'** ve **'Nakit Ödeme Tutarı Topl.'** sütunları yer almalıdır.")
+
+# Gerekli sütun kontrolü
+required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
+missing_cols = [col for col in required_cols if col not in df.columns]
+
+if missing_cols:
+    st.error(f"Yüklenen Excel dosyasında eksik sütunlar var: {missing_cols}")
+    st.stop()
+
+# GitHub SEKRETER deposundan profil resmi eşleştirme fonksiyonu
+def get_profile_image_url(person_name):
+    # Türkçe karakterleri ve boşlukları GitHub dosya adına uygun formata dönüştürme
+    formatted_name = (
+        person_name.strip()
+        .lower()
+        .replace("İ", "i")
+        .replace("I", "ı")
+        .replace("Ğ", "g")
+        .replace("Ü", "u")
+        .replace("Ş", "s")
+        .replace("Ö", "o")
+        .replace("Ç", "c")
+        .replace("ş", "s")
+        .replace("ğ", "g")
+        .replace("ü", "u")
+        .replace("ö", "o")
+        .replace("ç", "c")
+        .replace("ı", "i")
+        .replace(" ", "_")
+    )
+    # GitHub SEKRETER deposundaki raw dosya yolu (Kullanıcı adı/depo adını kendi repository bilgilerinizle güncelleyebilirsiniz)
+    # Örnek yapı: https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/fotolar/ADI_SOYADI.jpg
+    # Varsayılan olarak standart raw link şablonunu bırakıyoruz:
+    return f"https://raw.githubusercontent.com/KULLANICI_ADI/SEKRETER/main/{formatted_name}.jpg"
+
+# 4'lü Kolon yapısıyla kartları listeleme
+cols_per_row = 4
+for i in range(0, len(df), cols_per_row):
+    cols = st.columns(cols_per_row)
+    for j in range(cols_per_row):
+        idx = i + j
+        if idx < len(df):
+            row = df.iloc[idx]
+            person_name = row["Personel"]
+            nakit_ft = float(row["Nakit Ft. Tutarı Top"])
+            nakit_odeme = float(row["Nakit Ödeme Tutarı Topl."])
+            
+            banka_key = f"banka_{idx}"
+            odenen_key = f"odenen_{idx}"
+            completed_key = f"completed_{idx}"
+            
+            with cols[j]:
+                # Ön hesaplamalar
+                temp_banka = st.session_state.get(banka_key, 0.0)
+                hesap_tutar = nakit_ft + nakit_odeme - temp_banka
+                
+                # "İşlem Tamam" ibaresi yalnızca kullanıcı ödenen alanına veri kaydettiyse görünür
+                is_completed = st.session_state.get(completed_key, False)
+                
+                if is_completed:
+                    status_html = '<div style="color: #00ff88; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">✔ İşlem Tamam</div>'
+                else:
+                    status_html = '<div style="color: transparent; font-size: 0.75rem; margin-bottom: 2px;">&nbsp;</div>'
+
+                # GitHub SEKRETER deposundan eşleşen profil resmi
+                avatar_url = get_profile_image_url(person_name)
+                fallback_avatar = "https://img.icons8.com/color/96/user-male-circle--v1.png"
+
+                st.markdown(f"""
+                <div class="person-card">
+                    {status_html}
+                    <div class="card-content">
+                        <img src="{avatar_url}" onerror="this.onerror=null; this.src='{fallback_avatar}';" class="profile-img">
+                        <div class="person-info">
+                            <div class="person-name">{person_name}</div>
+                            <div class="person-net-tutar">{hesap_tutar:,.2f} TL</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                with st.expander(f"⚙️ {person_name} - İşlem", expanded=False):
+                    st.write(f"**Nakit Ft. Top:** {nakit_ft:,.2f} TL")
+                    st.write(f"**Nakit Ödeme Top:** {nakit_odeme:,.2f} TL")
+                    
+                    # 1. Banka/ATM Manüel Giriş
+                    banka_atm = st.number_input("Banka / ATM Tutarı", min_value=0.0, value=0.0, step=10.0, key=banka_key)
+                    
+                    # Güncel Hesaplama
+                    hesap_tutar = nakit_ft + nakit_odeme - banka_atm
+                    st.metric(label="HESAP (Net)", value=f"{hesap_tutar:,.2f} TL")
+                    
+                    # Callback fonksiyonu ile ödenen alanının girildiğini işaretleme
+                    def mark_completed(k=completed_key):
+                        st.session_state[k] = True
+
+                    # 2. Ödenen Manüel Giriş
+                    if odenen_key not in st.session_state:
+                        st.session_state[odenen_key] = hesap_tutar
+
+                    odenen_tutar = st.number_input(
+                        "Ödenen (Alınan/Verilen)", 
+                        min_value=0.0, 
+                        value=st.session_state[odenen_key], 
+                        step=10.0, 
+                        key=odenen_key,
+                        on_change=mark_completed
+                    )
+                    
+                    # Eğer kullanıcı input kutusunda değişiklik yaptıysa doğrudan tamamlandı olarak işaretle
+                    if st.session_state.get(odenen_key) != hesap_tutar:
+                        st.session_state[completed_key] = True
+
+                    # Mantık: Ödenen - HESAP (Net)
+                    fark = odenen_tutar - hesap_tutar
+                    
+                    if fark > 0:
+                        st.markdown(f"<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>💵 Eksik/Fazla (Fazla/Üstü): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                    elif fark < 0:
+                        st.markdown(f"<span style='color: #ff3333; font-weight: bold; font-size: 1.05rem;'>⚠️ Eksik/Fazla (Eksik): {abs(fark):,.2f} TL</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<span style='color: #00ff66; font-weight: bold; font-size: 1.05rem;'>✅ Eksik/Fazla: 0.00 TL (Tamam)</span>", unsafe_allow_html=True)
+
+# Alt Özet Tablosu ve İndirme Butonu
+st.markdown("---")
+st.markdown("### 📊 Genel Hesap Özeti Tablosu")
+
+summary_data = []
+for idx, row in df.iterrows():
+    person_name = row["Personel"]
+    nakit_ft = float(row["Nakit Ft. Tutarı Top"])
+    nakit_odeme = float(row["Nakit Ödeme Tutarı Topl."])
+    
+    banka_val = st.session_state.get(f"banka_{idx}", 0.0)
+    hesap = nakit_ft + nakit_odeme - banka_val
+    odenen_val = st.session_state.get(f"odenen_{idx}", hesap)
+    fark_val = odenen_val - hesap
+    
+    if fark_val > 0:
+        durum_metni = f"Fazla: +{fark_val:,.2f} TL"
+    elif fark_val < 0:
+        durum_metni = f"Eksik: {fark_val:,.2f} TL"
     else:
-        return f"Fazla: +{fark:.2f} TL"
+        durum_metni = "Tamam (0.00 TL)"
+    
+    summary_data.append({
+        "Personel": person_name,
+        "Nakit Ft. Top": nakit_ft,
+        "Nakit Ödeme Top": nakit_odeme,
+        "Banka / ATM": banka_val,
+        "HESAP": hesap,
+        "Ödenen": odenen_val,
+        "Eksik/Fazla": durum_metni
+    })
 
-edited_df["Eksik/Fazla"] = edited_df.apply(hesapla_durum, axis=1)
+summary_df = pd.DataFrame(summary_data)
+st.dataframe(summary_df.style.format({
+    "Nakit Ft. Top": "{:,.2f} TL",
+    "Nakit Ödeme Top": "{:,.2f} TL",
+    "Banka / ATM": "{:,.2f} TL",
+    "HESAP": "{:,.2f} TL",
+    "Ödenen": "{:,.2f} TL"
+}), use_container_width=True)
 
-st.markdown("### Güncel Sonuçlar Tablosu")
-st.dataframe(edited_df[["Personel", "Nakit Ft. Top", "Nakit Ödeme Tutarı Topl.", "Banka/ATM", "HESAP", "Ödenen", "Eksik/Fazla"]], use_container_width=True)
+csv = summary_df.to_csv(index=False).encode('utf-8')
+st.download_button(
+    label="📥 Hesap Özetini CSV Olarak İndir",
+    data=csv,
+    file_name='gunluk_hesap_ozeti.csv',
+    mime='text/csv',
+)
