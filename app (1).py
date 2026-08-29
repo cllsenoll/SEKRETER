@@ -9,7 +9,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-# Sayfa yapılandırması
 st.set_page_config(
     page_title="Günlük Personel Hesap ve Kasa Takibi",
     page_icon="💰",
@@ -17,139 +16,125 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Tema ve Kart Tasarımı CSS Kodları
 st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #0b132b 100%);
-        color: #ffffff;
-    }
-    [data-testid="stSidebar"] {
-        background-color: #1a365d;
-        border-right: 2px solid #ff7b00;
-    }
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
-        color: #ffffff !important;
-    }
-    .custom-card {
-        background: #131b2e;
-        border: 1px solid #2a3b5c;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    }
-    .card-top {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-    .profile-img {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #ffb703;
-        background-color: #0b132b;
-        flex-shrink: 0;
-    }
-    .person-name {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #ffffff;
-        letter-spacing: 0.5px;
-    }
-    .person-title {
-        font-size: 0.85rem;
-        color: #ffb703;
-        margin-top: 2px;
-        font-weight: 500;
-    }
-    .metrics-bar {
-        display: flex;
-        gap: 8px;
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        overflow-x: auto;
-    }
-    .metric-pill {
-        background: #1a2642;
-        border: 1px solid #2a3b5c;
-        border-radius: 8px;
-        padding: 6px 10px;
-        text-align: center;
-        flex: 1;
-        min-width: 75px;
-    }
-    .pill-label {
-        font-size: 0.65rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-        font-weight: bold;
-    }
-    .pill-value {
-        font-size: 0.85rem;
-        font-weight: bold;
-        color: #00ff88;
-        margin-top: 2px;
-    }
-    .kasa-panel {
-        background: linear-gradient(145deg, #1e3a8a, #0f172a);
-        border: 2px solid #ff7b00;
-        border-radius: 14px;
-        padding: 22px;
-        box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
-        margin-top: 15px;
-        margin-bottom: 25px;
-    }
-    .streamlit-expanderHeader {
-        background-color: #162238 !important;
-        color: #ffb703 !important;
-        border: 1px solid #2a3b5c !important;
-        border-radius: 8px !important;
-        font-weight: bold !important;
-    }
-    .stNumberInput label, .stMetric label, .stTextInput label {
-        color: #ffffff !important;
-    }
-    h1, h2, h3, h4 {
-        color: #ffffff !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    .stButton>button {
-        background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
-        color: white;
-        border-radius: 8px;
-        font-weight: bold;
-        border: none;
-        box-shadow: 0 4px 10px rgba(255, 123, 0, 0.3);
-    }
-    .stButton>button:hover {
-        background: linear-gradient(90deg, #ff9e00 0%, #ffb703 100%);
-        color: white;
-    }
-    </style>
+<style>
+.stApp {
+    background: linear-gradient(135deg, #0b132b 0%, #1c2541 50%, #0b132b 100%);
+    color: #ffffff;
+}
+[data-testid="stSidebar"] {
+    background-color: #1a365d;
+    border-right: 2px solid #ff7b00;
+}
+[data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+    color: #ffffff !important;
+}
+.custom-card {
+    background: #131b2e;
+    border: 1px solid #2a3b5c;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.card-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.profile-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ffb703;
+    background-color: #0b132b;
+    flex-shrink: 0;
+}
+.person-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+.person-title {
+    font-size: 0.85rem;
+    color: #ffb703;
+    margin-top: 2px;
+    font-weight: 500;
+}
+.metrics-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+}
+.metric-pill {
+    background: #1a2642;
+    border: 1px solid #2a3b5c;
+    border-radius: 8px;
+    padding: 6px 10px;
+    text-align: center;
+    flex: 1;
+    min-width: 75px;
+}
+.pill-label {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.pill-value {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #00ff88;
+    margin-top: 2px;
+}
+.kasa-panel {
+    background: linear-gradient(145deg, #1e3a8a, #0f172a);
+    border: 2px solid #ff7b00;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 6px 20px rgba(255, 123, 0, 0.25);
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+.stNumberInput label, .stMetric label, .stTextInput label {
+    color: #ffffff !important;
+}
+h1, h2, h3, h4 {
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.stButton>button {
+    background: linear-gradient(90deg, #ff7b00 0%, #ff9e00 100%);
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    box-shadow: 0 4px 10px rgba(255, 123, 0, 0.3);
+}
+.stButton>button:hover {
+    background: linear-gradient(90deg, #ff9e00 0%, #ffb703 100%);
+    color: white;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Kenar Çubuğu
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/money-bag.png", width=60)
     st.markdown("### F4 / HESAP")
     st.markdown("**Görükle Acente**")
     st.markdown("---")
-    
     st.markdown("👤 **Aktif Kullanıcı**")
     st.info("CELAL ŞENOL (Şube Şefi)")
-    
     st.markdown("---")
-    st.markdown("📂 **Rapor / Liste Yükle**")
     uploaded_file = st.file_uploader("HESAP Dosyasını Yükle (Excel veya CSV)", type=["xlsx", "xls", "csv"])
-    
     st.markdown("---")
     st.button("💰 HESAP", use_container_width=True, type="primary")
 
-# Ana Başlık
 st.markdown("# 💰 Günlük Personel Hesap ve Kasa Takibi")
 st.markdown("#### Personel Durum Kartları")
 st.markdown("---")
@@ -181,7 +166,6 @@ if uploaded_file is not None:
         
         if df is not None:
             df.columns = df.columns.astype(str).str.strip()
-            
             rename_map = {}
             for col in df.columns:
                 col_clean = col.lower().replace('İ', 'i').replace('ı', 'i').replace('I', 'i')
@@ -206,7 +190,6 @@ if uploaded_file is not None:
                         excel_kops_degeri = float(val_candidates.iloc[0])
 
             st.sidebar.success("Dosya başarıyla yüklendi ve işlendi!")
-            
     except Exception as e:
         st.sidebar.error(f"Kritik Dosya Okuma Hatası: {e}")
         df = None
@@ -247,7 +230,6 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB GÖRSEL ÇEKİCİ (BASE64 GÖMMELİ GÜÇLENDİRİLMİŞ SİSTEM) ---
     @st.cache_data(ttl=300)
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
@@ -256,7 +238,6 @@ else:
             clean_name = clean_name.replace(k, v)
         
         formatted_name = clean_name.lower().replace(" ", "_")
-        
         github_user = "cllsenoll"
         github_repo = "SEKRETER"
         branch_name = "main"
@@ -303,45 +284,11 @@ else:
                     
                     odenen_val = float(st.session_state.get(odenen_key, hesap_tutar))
                     is_completed = st.session_state.get(completed_key, False)
-                    
                     avatar_src = get_base64_avatar(person_name)
                     status_text = '<span style="color: #00ff88; font-size: 0.75rem; font-weight: bold; float: right;">✔ İşlem Tamam</span>' if is_completed else ''
 
-                    # HTML çıktısının düzgün render olması için unsafe_allow_html=True eklendi
-                    st.markdown(f"""
-                    <div class="custom-card">
-                        <div class="card-top">
-                            <img src="{avatar_src}" class="profile-img">
-                            <div style="flex-grow: 1;">
-                                {status_text}
-                                <div class="person-name">{person_name}</div>
-                                <div class="person-title">Saha Kuryesi</div>
-                            </div>
-                        </div>
-                        <div class="metrics-bar">
-                            <div class="metric-pill">
-                                <div class="pill-label">Nakit Ft.</div>
-                                <div class="pill-value" style="color: #60a5fa;">{nakit_ft:,.2f}</div>
-                            </div>
-                            <div class="metric-pill">
-                                <div class="pill-label">Nakit Ödeme</div>
-                                <div class="pill-value" style="color: #60a5fa;">{nakit_odeme:,.2f}</div>
-                            </div>
-                            <div class="metric-pill">
-                                <div class="pill-label">Banka/ATM</div>
-                                <div class="pill-value" style="color: #fbbf24;">{temp_banka:,.2f}</div>
-                            </div>
-                            <div class="metric-pill">
-                                <div class="pill-label">HESAP (Net)</div>
-                                <div class="pill-value" style="color: #38bdf8;">{hesap_tutar:,.2f}</div>
-                            </div>
-                            <div class="metric-pill">
-                                <div class="pill-label">Ödenen</div>
-                                <div class="pill-value" style="color: #00ff88;">{odenen_val:,.2f}</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    card_html = f"""<div class="custom-card"><div class="card-top"><img src="{avatar_src}" class="profile-img"><div style="flex-grow: 1;">{status_text}<div class="person-name">{person_name}</div><div class="person-title">Saha Kuryesi</div></div></div><div class="metrics-bar"><div class="metric-pill"><div class="pill-label">Nakit Ft.</div><div class="pill-value" style="color: #60a5fa;">{nakit_ft:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Nakit Ödeme</div><div class="pill-value" style="color: #60a5fa;">{nakit_odeme:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Banka/ATM</div><div class="pill-value" style="color: #fbbf24;">{temp_banka:,.2f}</div></div><div class="metric-pill"><div class="pill-label">HESAP (Net)</div><div class="pill-value" style="color: #38bdf8;">{hesap_tutar:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Ödenen</div><div class="pill-value" style="color: #00ff88;">{odenen_val:,.2f}</div></div></div></div>"""
+                    st.markdown(card_html, unsafe_allow_html=True)
                     
                     with st.expander(f"⚙️ {person_name} - İşlem Detayları", expanded=False):
                         banka_atm = st.number_input("Banka/ATM Tutarı", min_value=0.0, value=float(temp_banka), step=10.0, key=banka_key)
@@ -370,7 +317,6 @@ else:
                         else:
                             st.markdown("<span style='color: #00ff66; font-weight: bold;'>✅ Tamam (0.00 TL)</span>", unsafe_allow_html=True)
 
-    # --- GENEL KASA & PARA SAYMA ALANI ---
     st.markdown("---")
     st.markdown("### 💵 Genel Şube Kasası / Para Sayma Paneli")
 
@@ -411,7 +357,6 @@ else:
     kops_val = float(st.session_state.get('genel_kops_kasa', 0.0))
     kasa_fark = sube_net_val - kops_val
 
-    # --- KASA ÖZETİ VE TABLO ---
     st.markdown("---")
     st.markdown("### 📊 Genel Hesap Özeti ve Kasa Durumu")
     
@@ -446,7 +391,6 @@ else:
     summary_df = pd.DataFrame(summary_data)
     st.dataframe(summary_df, use_container_width=True)
 
-    # --- PDF ÇIKTISI ---
     @st.cache_data
     def get_dejavu_font():
         font_url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
