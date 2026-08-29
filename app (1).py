@@ -8,8 +8,6 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -19,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Gelişmiş Şık Kart ve Arayüz Tasarımı (Gönderdiğiniz Görsele Uyarlanmıştır)
+# Özel Arayüz Tema Stilleri
 st.markdown("""
     <style>
     .stApp {
@@ -32,65 +30,6 @@ st.markdown("""
     }
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #ffffff !important;
-    }
-    .custom-card {
-        background: linear-gradient(145deg, #131b2e, #1a2642);
-        border: 1px solid #2a3b5c;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-    .card-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-    .profile-img {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #ff7b00;
-        background-color: #0b132b;
-        flex-shrink: 0;
-    }
-    .person-name {
-        font-size: 1.05rem;
-        font-weight: bold;
-        color: #ffffff;
-        letter-spacing: 0.5px;
-    }
-    .person-title {
-        font-size: 0.85rem;
-        color: #ff7b00;
-        margin-top: 2px;
-    }
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .metric-box {
-        background: rgba(11, 19, 43, 0.6);
-        border-radius: 8px;
-        padding: 8px 10px;
-        text-align: center;
-        border: 1px solid #223055;
-    }
-    .metric-label {
-        font-size: 0.70rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-        margin-bottom: 2px;
-    }
-    .metric-value {
-        font-size: 0.90rem;
-        font-weight: bold;
-        color: #00ff88;
     }
     .kasa-panel {
         background: linear-gradient(145deg, #1e3a8a, #0f172a);
@@ -248,9 +187,9 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB GÖRSEL ÇEKİCİ (GÜÇLENDİRİLMİŞ) ---
+    # --- GİTHUB GÖRSEL ÇEKİCİ (GÜVENLİ URL YÖNETİMİ) ---
     @st.cache_data(ttl=300)
-    def get_base64_avatar(person_name):
+    def get_avatar_url(person_name):
         clean_name = person_name.strip()
         tr_chars = {"İ": "i", "I": "i", "ı": "i", "Ş": "s", "ş": "s", "Ğ": "g", "ğ": "g", "Ç": "c", "ç": "c", "Ö": "o", "ö": "o", "Ü": "u", "ü": "u"}
         for k, v in tr_chars.items():
@@ -271,16 +210,14 @@ else:
                 url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{folder}{formatted_name}.{ext}"
                 try:
                     req = urllib.request.urlopen(url, timeout=2)
-                    img_bytes = req.read()
-                    encoded = base64.b64encode(img_bytes).decode()
-                    mime_type = "image/png" if ext.lower() == "png" else "image/jpeg"
-                    return f"data:{mime_type};base64,{encoded}"
+                    if req.status == 200:
+                        return url
                 except:
                     continue
                 
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
-    cols_per_row = 2  # Örnek görseldeki gibi geniş ve detaylı kartlar için satır başına 2 sütun idealdir
+    cols_per_row = 2 
     for i in range(0, len(df), cols_per_row):
         cols = st.columns(cols_per_row)
         for j in range(cols_per_row):
@@ -296,81 +233,72 @@ else:
                 completed_key = f"completed_{idx}"
                 
                 with cols[j]:
-                    temp_banka = st.session_state.get(banka_key, 0.0)
-                    hesap_tutar = nakit_ft + nakit_odeme - temp_banka
-                    
-                    if odenen_key not in st.session_state:
-                        st.session_state[odenen_key] = hesap_tutar
-                    
-                    odenen_val = float(st.session_state.get(odenen_key, hesap_tutar))
-                    is_completed = st.session_state.get(completed_key, False)
-                    
-                    status_badge = '<span style="color: #00ff88; font-size: 0.75rem; font-weight: bold; float: right;">✔ İşlem Tamam</span>' if is_completed else ''
-
-                    avatar_src = get_base64_avatar(person_name)
-
-                    # Görseldeki tasarıma benzer özel kart yapısı
-                    st.markdown(f"""
-                    <div class="custom-card">
-                        <div class="card-header">
-                            <img src="{avatar_src}" class="profile-img">
-                            <div style="flex-grow: 1;">
-                                {status_badge}
-                                <div class="person-name">{person_name}</div>
-                                <div class="person-title">Saha / Operasyon Personeli</div>
-                            </div>
-                        </div>
-                        <div class="metrics-grid">
-                            <div class="metric-box">
-                                <div class="metric-label">Nakit Ft. Top</div>
-                                <div class="metric-value" style="color: #60a5fa;">{nakit_ft:,.2f} ₺</div>
-                            </div>
-                            <div class="metric-box">
-                                <div class="metric-label">Nakit Ödeme Topl.</div>
-                                <div class="metric-value" style="color: #60a5fa;">{nakit_odeme:,.2f} ₺</div>
-                            </div>
-                            <div class="metric-box">
-                                <div class="metric-label">Banka/ATM</div>
-                                <div class="metric-value" style="color: #fbbf24;">{temp_banka:,.2f} ₺</div>
-                            </div>
-                            <div class="metric-box">
-                                <div class="metric-label">HESAP (Net)</div>
-                                <div class="metric-value">{hesap_tutar:,.2f} ₺</div>
-                            </div>
-                            <div class="metric-box" style="grid-column: span 2;">
-                                <div class="metric-label">Ödenen (Alınan/Verilen)</div>
-                                <div class="metric-value" style="color: #38bdf8;">{odenen_val:,.2f} ₺</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    with st.expander(f"⚙️ {person_name} - İşlem Detayları", expanded=False):
-                        banka_atm = st.number_input("Banka/ATM Tutarı", min_value=0.0, value=float(temp_banka), step=10.0, key=banka_key)
+                    with st.container(border=True):
+                        temp_banka = st.session_state.get(banka_key, 0.0)
+                        hesap_tutar = nakit_ft + nakit_odeme - temp_banka
                         
-                        def mark_completed(k=completed_key):
-                            st.session_state[k] = True
-
-                        odenen_tutar = st.number_input(
-                            "Ödenen (Alınan/Verilen)", 
-                            min_value=0.0, 
-                            value=float(st.session_state[odenen_key]), 
-                            step=10.0, 
-                            key=odenen_key,
-                            on_change=mark_completed
-                        )
+                        if odenen_key not in st.session_state:
+                            st.session_state[odenen_key] = hesap_tutar
                         
-                        hesap_tutar_guncel = nakit_ft + nakit_odeme - banka_atm
-                        if st.session_state.get(odenen_key) != hesap_tutar_guncel:
-                            st.session_state[completed_key] = True
+                        odenen_val = float(st.session_state.get(odenen_key, hesap_tutar))
+                        is_completed = st.session_state.get(completed_key, False)
+                        
+                        avatar_url = get_avatar_url(person_name)
 
-                        fark = odenen_tutar - hesap_tutar_guncel
-                        if fark > 0:
-                            st.markdown(f"<span style='color: #00ff66; font-weight: bold;'>✅ Fazla ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
-                        elif fark < 0:
-                            st.markdown(f"<span style='color: #ff3333; font-weight: bold;'>✅ Eksik ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
-                        else:
-                            st.markdown("<span style='color: #00ff66; font-weight: bold;'>✅ Tamam (0.00 TL)</span>", unsafe_allow_html=True)
+                        # Üst Kısım: Fotoğraf ve İsim Bilgisi Yan Yana
+                        c1, c2 = st.columns([1, 4])
+                        with c1:
+                            st.image(avatar_url, width=55)
+                        with c2:
+                            if is_completed:
+                                st.markdown("<span style='color: #00ff88; font-size: 0.75rem; font-weight: bold;'>✔ İşlem Tamam</span>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='font-size: 1rem; font-weight: bold; color: #ffffff;'>{person_name}</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='font-size: 0.8rem; color: #ff7b00;'>Saha / Operasyon Personeli</div>", unsafe_allow_html=True)
+
+                        st.markdown("<hr style='margin: 8px 0px; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
+
+                        # Metrik Kutuları (İstediğiniz 5 Alan)
+                        m1, m2, m3 = st.columns(3)
+                        with m1:
+                            st.metric("Nakit Ft. Top", f"{nakit_ft:,.2f} ₺")
+                        with m2:
+                            st.metric("Nakit Ödeme Topl.", f"{nakit_odeme:,.2f} ₺")
+                        with m3:
+                            st.metric("Banka/ATM Tutarı", f"{temp_banka:,.2f} ₺")
+
+                        m4, m5 = st.columns(2)
+                        with m4:
+                            st.metric("HESAP (Net)", f"{hesap_tutar:,.2f} ₺")
+                        with m5:
+                            st.metric("Ödenen (Alınan/Verilen)", f"{odenen_val:,.2f} ₺")
+
+                        # İşlem Detayları Açılır Menüsü
+                        with st.expander(f"⚙️ {person_name} - İşlem Detayları", expanded=False):
+                            banka_atm = st.number_input("Banka/ATM Tutarı", min_value=0.0, value=float(temp_banka), step=10.0, key=banka_key)
+                            
+                            def mark_completed(k=completed_key):
+                                st.session_state[k] = True
+
+                            odenen_tutar = st.number_input(
+                                "Ödenen (Alınan/Verilen)", 
+                                min_value=0.0, 
+                                value=float(st.session_state[odenen_key]), 
+                                step=10.0, 
+                                key=odenen_key,
+                                on_change=mark_completed
+                            )
+                            
+                            hesap_tutar_guncel = nakit_ft + nakit_odeme - banka_atm
+                            if st.session_state.get(odenen_key) != hesap_tutar_guncel:
+                                st.session_state[completed_key] = True
+
+                            fark = odenen_tutar - hesap_tutar_guncel
+                            if fark > 0:
+                                st.markdown(f"<span style='color: #00ff66; font-weight: bold;'>✅ Fazla ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
+                            elif fark < 0:
+                                st.markdown(f"<span style='color: #ff3333; font-weight: bold;'>✅ Eksik ({abs(fark):,.2f} TL)</span>", unsafe_allow_html=True)
+                            else:
+                                st.markdown("<span style='color: #00ff66; font-weight: bold;'>✅ Tamam (0.00 TL)</span>", unsafe_allow_html=True)
 
     # --- GENEL KASA & PARA SAYMA ALANI ---
     st.markdown("---")
