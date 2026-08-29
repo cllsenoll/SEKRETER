@@ -181,7 +181,9 @@ if uploaded_file is not None:
 
             if "Personel" in df.columns:
                 df = df[df["Personel"].notna()]
-                df = df[~df["Personel"].astype(str).str.lower().str.contains("toplam")]
+                # İsimlerdeki olası boşlukları temizleyelim
+                df["Personel"] = df["Personel"].astype(str).str.strip()
+                df = df[~df["Personel"].str.lower().str.contains("toplam")]
 
             for col in df.columns:
                 if "kops" in col.lower():
@@ -230,25 +232,26 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- DOĞRUDAN GİTHUB RAW URL OLUŞTURUCU (FOTOĞRAF SORUNUNA KESİN ÇÖZÜM) ---
+    # --- KESİN ÇÖZÜMLÜ FOTOĞRAF URL OLUŞTURUCU ---
     def get_github_avatar_url(person_name):
-        clean_name = person_name.strip()
+        clean_name = " ".join(person_name.split()) # Aradaki fazla boşlukları temizle
         gh_user = "cllsenoll"
         gh_repo = "SEKRETER"
         gh_branch = "main"
         
-        # GitHub raw linkini doğrudan döndürüyoruz. Tarayıcı resmi doğrudan çekecektir.
         file_encoded = urllib.parse.quote(f"{clean_name}.png")
         return f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
 
-    # --- ÖZEL UNVAN BELİRLEME FONKSİYONU ---
+    # --- GÜÇLENDİRİLMİŞ ÖZEL UNVAN BELİRLEME FONKSİYONU ---
     def get_person_title(person_name):
-        p_upper = person_name.strip().replace('İ', 'I').replace('ı', 'I').upper()
-        if "CELAL ŞENOL" in p_upper or "CELAL SENOL" in p_upper:
+        # Boşlukları normalize et ve Türkçe karakterleri İngilizce karşılıklarına benzeterek karşılaştır
+        p_norm = " ".join(person_name.split()).replace('İ', 'I').replace('ı', 'I').upper()
+        
+        if "CELAL ŞENOL" in p_norm or "CELAL SENOL" in p_norm:
             return "Şube Şefi"
-        elif "SERGEN GÖRÜROĞLU" in p_upper or "SERGEN GORUROGLU" in p_upper:
+        elif "SERGEN GÖRÜROĞLU" in p_norm or "SERGEN GORUROGLU" in p_norm:
             return "Acente"
-        elif "BURCU DÜREN" in p_upper or "BURCU DUREN" in p_upper or "HATİCE KÜBRA IŞIK" in p_upper or "HATICE KUBRA ISIK" in p_upper:
+        elif "BURCU DÜREN" in p_norm or "BURCU DUREN" in p_norm or "HATİCE KÜBRA IŞIK" in p_norm or "HATICE KUBRA ISIK" in p_norm:
             return "Şube Opr."
         else:
             return "Saha Kuryesi"
