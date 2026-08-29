@@ -230,7 +230,7 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB SEKRETER DEPOSUNDAN FOTOĞRAF ÇEKME VE BASE64 ÇEVİRME ---
+    # --- GİTHUB SEKRETER DEPOSUNDAN FOTOĞRAF ÇEKME (GELİŞTİRİLMİŞ EŞLEŞTİRME) ---
     @st.cache_data(ttl=300)
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
@@ -243,8 +243,8 @@ else:
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # Olası klasör kombinasyonları ve uzantılar taranır (Öncelikli .png)
-        folders = ["", "fotograflar/", "img/", "images/", "resimler/", "foto/"]
+        # Olası tüm klasör ve uzantı kombinasyonları taranır
+        folders = ["", "fotograflar/", "img/", "images/", "resimler/", "foto/", "photos/"]
         extensions = ["png", "PNG", "jpg", "jpeg", "JPG"]
         
         import urllib.request
@@ -260,7 +260,7 @@ else:
                 except:
                     continue
                 
-        # Fotoğraf bulunamazsa otomatik baş harf avatarı döner
+        # GitHub'da dosya bulunamazsa şık bir UI Avatar (Harf Bazlı) döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128"
 
     cols_per_row = 2 
