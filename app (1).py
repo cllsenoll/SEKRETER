@@ -229,20 +229,24 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- KESİN VE ÇOKLU KLASÖR TARAYICILI GİTHUB GÖRSEL ÇEKİCİ (BASE64) ---
-    @st.cache_data(ttl=3600)
+    # --- GİTHUB GÖRSEL ÇEKİCİ (GÜNCELLENMİŞ KARAKTER VE KLASÖR YÖNETİMİ) ---
+    @st.cache_data(ttl=300)
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
-        tr_map = str.maketrans("İIŞŞĞĞÇÇÖÖÜÜ", "iısşğğççoöüü")
-        formatted_name = clean_name.translate(tr_map).lower().replace(" ", "_")
+        # Türkçe karakterleri düzgünce normalize etme
+        tr_chars = {"İ": "i", "I": "i", "ı": "i", "Ş": "s", "ş": "s", "Ğ": "g", "ğ": "g", "Ç": "c", "ç": "c", "Ö": "o", "ö": "o", "Ü": "u", "ü": "u"}
+        for k, v in tr_chars.items():
+            clean_name = clean_name.replace(k, v)
+        
+        formatted_name = clean_name.lower().replace(" ", "_")
         
         github_user = "cllsenoll"
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # GitHub deposundaki olası klasörler ve uzantılar
-        folders = ["", "fotograflar/", "img/", "images/", "resimler/"]
-        extensions = ["png", "jpg", "jpeg"]
+        # Taranacak olası klasörler ve dosya uzantıları
+        folders = ["", "fotograflar/", "img/", "images/", "resimler/", "foto/"]
+        extensions = ["png", "jpg", "jpeg", "JPG", "PNG"]
         
         import urllib.request
         for folder in folders:
@@ -252,12 +256,12 @@ else:
                     req = urllib.request.urlopen(url, timeout=2)
                     img_bytes = req.read()
                     encoded = base64.b64encode(img_bytes).decode()
-                    mime_type = "image/png" if ext == "png" else "image/jpeg"
+                    mime_type = "image/png" if ext.lower() == "png" else "image/jpeg"
                     return f"data:{mime_type};base64,{encoded}"
                 except:
                     continue
                 
-        # Eğer GitHub'da hiçbir klasörde bulunamazsa şık baş harf rozeti döner
+        # Eğer GitHub'da bulunamazsa şık bir baş harf rozeti döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ff7b00&bold=true&size=128"
 
     cols_per_row = 4
