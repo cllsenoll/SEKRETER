@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Gönderdiğiniz Görseldeki Tema ve Kart Tasarımı CSS Kodları
+# Tema ve Kart Tasarımı CSS Kodları
 st.markdown("""
     <style>
     .stApp {
@@ -307,7 +307,7 @@ else:
                     avatar_src = get_base64_avatar(person_name)
                     status_text = '<span style="color: #00ff88; font-size: 0.75rem; font-weight: bold; float: right;">✔ İşlem Tamam</span>' if is_completed else ''
 
-                    # İstediğiniz görsel temaya tam uyumlu HTML kart yapısı
+                    # HTML çıktısının düzgün render olması için unsafe_allow_html=True eklendi
                     st.markdown(f"""
                     <div class="custom-card">
                         <div class="card-top">
