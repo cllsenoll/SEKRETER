@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import io
-import urllib.request
 import urllib.parse
 import os
 import base64
@@ -199,7 +198,7 @@ if df is None:
     st.info("📂 Lütfen işlem yapmak için sol menüden **HESAP** adlı dosyanızı (Excel veya CSV) yükleyin.")
 else:
     required_cols = ["Personel", "Nakit Ft. Tutarı Top", "Nakit Ödeme Tutarı Topl."]
-    missing_cols = [col for col in required_cols if col not in df.columns]
+    missing_cols = [col for col in required_cols if col.lower() not in [c.lower() for c in df.columns]]
 
     if missing_cols:
         st.error(f"❌ Yüklenen dosyada aradığımız sütunlar bulunamadı!\n**Eksik Sütunlar:** {missing_cols}")
@@ -231,39 +230,28 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- KESİN ÇÖZÜMLÜ GİTHUB FOTOĞRAF ÇEKME FONKSİYONU ---
-    def get_base64_avatar(person_name):
+    # --- DOĞRUDAN GİTHUB RAW URL OLUŞTURUCU (FOTOĞRAF SORUNUNA KESİN ÇÖZÜM) ---
+    def get_github_avatar_url(person_name):
         clean_name = person_name.strip()
         gh_user = "cllsenoll"
         gh_repo = "SEKRETER"
         gh_branch = "main"
         
-        # GitHub'daki olası dosya adı varyasyonları (Orijinal ad, Büyük harf, Küçük harf)
-        name_variations = [
-            clean_name,
-            clean_name.upper(),
-            clean_name.lower(),
-            clean_name.title()
-        ]
-        
-        extensions = ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG"]
-        
-        for name in name_variations:
-            for ext in extensions:
-                file_name = f"{name}.{ext}"
-                file_encoded = urllib.parse.quote(file_name)
-                url = f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
-                try:
-                    req = urllib.request.urlopen(url, timeout=2)
-                    img_bytes = req.read()
-                    if len(img_bytes) > 200:
-                        encoded = base64.b64encode(img_bytes).decode()
-                        mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
-                        return f"data:{mime_type};base64,{encoded}"
-                except Exception:
-                    continue
-                
-        return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128"
+        # GitHub raw linkini doğrudan döndürüyoruz. Tarayıcı resmi doğrudan çekecektir.
+        file_encoded = urllib.parse.quote(f"{clean_name}.png")
+        return f"https://raw.githubusercontent.com/{gh_user}/{gh_repo}/{gh_branch}/{file_encoded}"
+
+    # --- ÖZEL UNVAN BELİRLEME FONKSİYONU ---
+    def get_person_title(person_name):
+        p_upper = person_name.strip().replace('İ', 'I').replace('ı', 'I').upper()
+        if "CELAL ŞENOL" in p_upper or "CELAL SENOL" in p_upper:
+            return "Şube Şefi"
+        elif "SERGEN GÖRÜROĞLU" in p_upper or "SERGEN GORUROGLU" in p_upper:
+            return "Acente"
+        elif "BURCU DÜREN" in p_upper or "BURCU DUREN" in p_upper or "HATİCE KÜBRA IŞIK" in p_upper or "HATICE KUBRA ISIK" in p_upper:
+            return "Şube Opr."
+        else:
+            return "Saha Kuryesi"
 
     cols_per_row = 2 
     for i in range(0, len(df), cols_per_row):
@@ -289,10 +277,13 @@ else:
                     
                     odenen_val = float(st.session_state.get(odenen_key, hesap_tutar))
                     is_completed = st.session_state.get(completed_key, False)
-                    avatar_src = get_base64_avatar(person_name)
+                    
+                    avatar_src = get_github_avatar_url(person_name)
+                    person_title = get_person_title(person_name)
+                    
                     status_text = '<span style="color: #00ff88; font-size: 0.75rem; font-weight: bold; float: right;">✔ İşlem Tamam</span>' if is_completed else ''
 
-                    card_html = f"""<div class="custom-card"><div class="card-top"><img src="{avatar_src}" class="profile-img"><div style="flex-grow: 1;">{status_text}<div class="person-name">{person_name}</div><div class="person-title">Saha Kuryesi</div></div></div><div class="metrics-bar"><div class="metric-pill"><div class="pill-label">Nakit Ft.</div><div class="pill-value" style="color: #60a5fa;">{nakit_ft:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Nakit Ödeme</div><div class="pill-value" style="color: #60a5fa;">{nakit_odeme:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Banka/ATM</div><div class="pill-value" style="color: #fbbf24;">{temp_banka:,.2f}</div></div><div class="metric-pill"><div class="pill-label">HESAP (Net)</div><div class="pill-value" style="color: #38bdf8;">{hesap_tutar:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Ödenen</div><div class="pill-value" style="color: #00ff88;">{odenen_val:,.2f}</div></div></div></div>"""
+                    card_html = f"""<div class="custom-card"><div class="card-top"><img src="{avatar_src}" class="profile-img" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128';"><div style="flex-grow: 1;">{status_text}<div class="person-name">{person_name}</div><div class="person-title">{person_title}</div></div></div><div class="metrics-bar"><div class="metric-pill"><div class="pill-label">Nakit Ft.</div><div class="pill-value" style="color: #60a5fa;">{nakit_ft:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Nakit Ödeme</div><div class="pill-value" style="color: #60a5fa;">{nakit_odeme:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Banka/ATM</div><div class="pill-value" style="color: #fbbf24;">{temp_banka:,.2f}</div></div><div class="metric-pill"><div class="pill-label">HESAP (Net)</div><div class="pill-value" style="color: #38bdf8;">{hesap_tutar:,.2f}</div></div><div class="metric-pill"><div class="pill-label">Ödenen</div><div class="pill-value" style="color: #00ff88;">{odenen_val:,.2f}</div></div></div></div>"""
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     with st.expander(f"⚙️ {person_name} - İşlem Detayları", expanded=False):
