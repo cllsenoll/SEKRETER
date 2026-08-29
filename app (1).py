@@ -230,25 +230,24 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB FOTOĞRAF ÇEKME FONKSİYONU (GÜNCELLENDİ) ---
-    @st.cache_data(ttl=60)
+    # --- ÖNBELLEKSİZ VE GARANTİLİ FOTOĞRAF ÇEKME FONKSİYONU ---
     def get_base64_avatar(person_name):
         clean_name = person_name.strip()
         github_user = "cllsenoll"
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # GitHub'da gördüğümüz birebir büyük harfli uzantıları öncelikli alıyoruz
         extensions = ["PNG", "png", "JPG", "jpg", "jpeg"]
         import urllib.request
         
         for ext in extensions:
-            file_encoded = urllib.parse.quote(f"{clean_name}.{ext}")
+            # safe="" parametresi ile tüm boşluk ve özel karakterlerin tam olarak URL encode edilmesini sağlıyoruz
+            file_encoded = urllib.parse.quote(f"{clean_name}.{ext}", safe="")
             url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{file_encoded}"
             try:
                 req = urllib.request.urlopen(url, timeout=3)
                 img_bytes = req.read()
-                if len(img_bytes) > 100: # Boş dosya kontrolü
+                if len(img_bytes) > 200: # Geçerli bir görsel boyutu kontrolü
                     encoded = base64.b64encode(img_bytes).decode()
                     mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
                     return f"data:{mime_type};base64,{encoded}"
