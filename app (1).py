@@ -230,31 +230,31 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB SEKRETER DEPOSUNDAN ORİJİNAL İSİMLE FOTOĞRAF ÇEKME ---
-    @st.cache_data(ttl=300)
+    # --- GİTHUB FOTOĞRAF ÇEKME FONKSİYONU (GÜNCELLENDİ) ---
+    @st.cache_data(ttl=60)
     def get_base64_avatar(person_name):
-        clean_name = person_name.strip() # Excel'deki büyük harfli orijinal ismi koruyoruz
+        clean_name = person_name.strip()
         github_user = "cllsenoll"
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        extensions = ["png", "PNG", "jpg", "jpeg", "JPG"]
+        # GitHub'da gördüğümüz birebir büyük harfli uzantıları öncelikli alıyoruz
+        extensions = ["PNG", "png", "JPG", "jpg", "jpeg"]
         import urllib.request
         
         for ext in extensions:
-            # GitHub'daki dosya adı yapısıyla birebir eşleşmesi için urllib.parse.quote kullanıyoruz
             file_encoded = urllib.parse.quote(f"{clean_name}.{ext}")
             url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{file_encoded}"
             try:
-                req = urllib.request.urlopen(url, timeout=2)
+                req = urllib.request.urlopen(url, timeout=3)
                 img_bytes = req.read()
-                encoded = base64.b64encode(img_bytes).decode()
-                mime_type = "image/png" if ext.lower() in ["png", "PNG"] else "image/jpeg"
-                return f"data:{mime_type};base64,{encoded}"
-            except:
+                if len(img_bytes) > 100: # Boş dosya kontrolü
+                    encoded = base64.b64encode(img_bytes).decode()
+                    mime_type = "image/png" if "png" in ext.lower() else "image/jpeg"
+                    return f"data:{mime_type};base64,{encoded}"
+            except Exception:
                 continue
                 
-        # Bulunamazsa yedek olarak harf avatar döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128"
 
     cols_per_row = 2 
