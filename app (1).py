@@ -230,37 +230,31 @@ else:
     df["Nakit Ft. Tutarı Top"] = df["Nakit Ft. Tutarı Top"].apply(clean_turkish_number)
     df["Nakit Ödeme Tutarı Topl."] = df["Nakit Ödeme Tutarı Topl."].apply(clean_turkish_number)
 
-    # --- GİTHUB SEKRETER DEPOSUNDAN FOTOĞRAF ÇEKME (GELİŞTİRİLMİŞ EŞLEŞTİRME) ---
+    # --- GİTHUB SEKRETER DEPOSUNDAN ORİJİNAL İSİMLE FOTOĞRAF ÇEKME ---
     @st.cache_data(ttl=300)
     def get_base64_avatar(person_name):
-        clean_name = person_name.strip()
-        tr_chars = {"İ": "i", "I": "i", "ı": "i", "Ş": "s", "ş": "s", "Ğ": "g", "ğ": "g", "Ç": "c", "ç": "c", "Ö": "o", "ö": "o", "Ü": "u", "ü": "u"}
-        for k, v in tr_chars.items():
-            clean_name = clean_name.replace(k, v)
-        
-        formatted_name = clean_name.lower().replace(" ", "_")
+        clean_name = person_name.strip() # Excel'deki büyük harfli orijinal ismi koruyoruz
         github_user = "cllsenoll"
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # Olası tüm klasör ve uzantı kombinasyonları taranır
-        folders = ["", "fotograflar/", "img/", "images/", "resimler/", "foto/", "photos/"]
         extensions = ["png", "PNG", "jpg", "jpeg", "JPG"]
-        
         import urllib.request
-        for folder in folders:
-            for ext in extensions:
-                url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{folder}{formatted_name}.{ext}"
-                try:
-                    req = urllib.request.urlopen(url, timeout=2)
-                    img_bytes = req.read()
-                    encoded = base64.b64encode(img_bytes).decode()
-                    mime_type = "image/png" if ext.lower() in ["png", "PNG"] else "image/jpeg"
-                    return f"data:{mime_type};base64,{encoded}"
-                except:
-                    continue
+        
+        for ext in extensions:
+            # GitHub'daki dosya adı yapısıyla birebir eşleşmesi için urllib.parse.quote kullanıyoruz
+            file_encoded = urllib.parse.quote(f"{clean_name}.{ext}")
+            url = f"https://raw.githubusercontent.com/{github_user}/{github_repo}/{branch_name}/{file_encoded}"
+            try:
+                req = urllib.request.urlopen(url, timeout=2)
+                img_bytes = req.read()
+                encoded = base64.b64encode(img_bytes).decode()
+                mime_type = "image/png" if ext.lower() in ["png", "PNG"] else "image/jpeg"
+                return f"data:{mime_type};base64,{encoded}"
+            except:
+                continue
                 
-        # GitHub'da dosya bulunamazsa şık bir UI Avatar (Harf Bazlı) döner
+        # Bulunamazsa yedek olarak harf avatar döner
         return f"https://ui-avatars.com/api/?name={urllib.parse.quote(person_name)}&background=1e3a8a&color=ffb703&bold=true&size=128"
 
     cols_per_row = 2 
