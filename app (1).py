@@ -166,7 +166,7 @@ if uploaded_file is not None:
             
             rename_map = {}
             for col in df.columns:
-                col_clean = col.lower().replace('i', 'i').replace('ı', 'i')
+                col_clean = col.lower().replace('İ', 'i').replace('ı', 'i').replace('I', 'i')
                 if "personel" in col_clean and ("adi" in col_clean or "ad" in col_clean or col_clean == "personel"):
                     rename_map[col] = "Personel"
                 elif "nakit" in col_clean and "ft" in col_clean and ("tutar" in col_clean or "top" in col_clean):
@@ -240,7 +240,7 @@ else:
         github_repo = "SEKRETER"
         branch_name = "main"
         
-        # GitHub deposundaki olası olası klasörler ve uzantılar
+        # GitHub deposundaki olası klasörler ve uzantılar
         folders = ["", "fotograflar/", "img/", "images/", "resimler/"]
         extensions = ["png", "jpg", "jpeg"]
         
